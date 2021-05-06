@@ -22,6 +22,7 @@ from gst_tools import GstVideoSink, GstVideoSource, GstPipeline, GstContext  # n
 # from gstreamer import GstVideo, Gst
 # import gstreamer as gst
 # import gstreamer.utils as utils
+from utils import ndarray_to_gst_buffer
 
 
 VERSION = "0.5.6.2"
@@ -116,80 +117,44 @@ def test_gst_pipeline():
     pass
 
 
-# @pytest.mark.skip
-# def test_video_src_to_source():
 
-#     num_buffers = NUM_BUFFERS
+def test_metadata():
+    np_buffer = np.random.randint(
+        low=0, high=255, size=(HEIGHT, WIDTH, 3), dtype=np.uint8)
 
-#     for frame in FRAMES:
-#         buffer = frame.buffer
-#         h, w = buffer.shape[:2]
+    
+    gst_buffer = ndarray_to_gst_buffer(np_buffer)
 
-#         sink_cmd = "appsrc emit-signals=True is-live=True ! videoconvert ! fakesink sync=false"
+    from gst_objects_info_meta import gst_meta_write, gst_meta_get, gst_meta_remove
 
-#         fmt = GstVideo.VideoFormat.to_string(frame.buffer_format)
-#         caps_filter = f'capsfilter caps=video/x-raw,format={fmt},width={w},height={h}'
-#         src_cmd = f'videotestsrc num-buffers={num_buffers} ! {caps_filter} ! appsink emit-signals=True sync=false'
+    objects = [
+        {'class_name': "person", 'bounding_box': [
+            8, 10, 100, 100], 'confidence': 0.6, 'track_id': 1},
+        {'class_name': "person", 'bounding_box': [
+            10, 9, 120, 110], 'confidence': 0.67, 'track_id': 2},
+    ]
 
-#         with gst.GstContext(), gst.GstVideoSink(sink_cmd, width=w, height=h, video_frmt=frame.buffer_format) as sink, \
-#                 gst.GstVideoSource(src_cmd) as src:
-#             assert sink.total_buffers_count == 0
+    # no metadata at the beginning
+    assert len(gst_meta_get(gst_buffer)) == 0
 
-#             # wait pipeline to initialize
-#             max_num_tries, num_tries = 5, 0
-#             while not sink.is_active and num_tries <= max_num_tries:
-#                 time.sleep(.1)
-#                 num_tries += 1
+    # write metadata
+    gst_meta_write(gst_buffer, objects)
 
-#             assert sink.is_active
+    # read metadata
+    meta_objects = gst_meta_get(gst_buffer)
+    assert len(gst_meta_get(gst_buffer)) == len(objects)
 
-#             num_read = 0
-#             while num_read < num_buffers:
-#                 buffer = src.pop()
-#                 if buffer:
-#                     num_read += 1
-#                     sink.push(buffer.data, pts=buffer.pts,
-#                               dts=buffer.dts, offset=buffer.offset)
+    for gst_meta_obj, py_obj in zip(meta_objects, objects):
+        for key, val in py_obj.items():
+            if isinstance(gst_meta_obj[key], float):
+                assert math.isclose(gst_meta_obj[key], val, rel_tol=1e-07)
+            else:
+                assert gst_meta_obj[key] == val
 
-#             assert src.total_buffers_count == num_buffers
-#             assert sink.total_buffers_count == num_buffers
-
-
-# def test_metadata():
-#     np_buffer = np.random.randint(
-#         low=0, high=255, size=(HEIGHT, WIDTH, 3), dtype=np.uint8)
-
-#     gst_buffer = gst.ndarray_to_gst_buffer(np_buffer)
-
-#     from gstreamer.gst_objects_info_meta import gst_meta_write, gst_meta_get, gst_meta_remove
-
-#     objects = [
-#         {'class_name': "person", 'bounding_box': [
-#             8, 10, 100, 100], 'confidence': 0.6, 'track_id': 1},
-#         {'class_name': "person", 'bounding_box': [
-#             10, 9, 120, 110], 'confidence': 0.67, 'track_id': 2},
-#     ]
-
-#     # no metadata at the beginning
-#     assert len(gst_meta_get(gst_buffer)) == 0
-
-#     # write metadata
-#     gst_meta_write(gst_buffer, objects)
-
-#     # read metadata
-#     meta_objects = gst_meta_get(gst_buffer)
-#     assert len(gst_meta_get(gst_buffer)) == len(objects)
-
-#     for gst_meta_obj, py_obj in zip(meta_objects, objects):
-#         for key, val in py_obj.items():
-#             if isinstance(gst_meta_obj[key], float):
-#                 assert math.isclose(gst_meta_obj[key], val, rel_tol=1e-07)
-#             else:
-#                 assert gst_meta_obj[key] == val
-
-#     # remove metadata
-#     gst_meta_remove(gst_buffer)
-#     assert len(gst_meta_get(gst_buffer)) == 0
+    # remove metadata
+    gst_meta_remove(gst_buffer)
+    assert len(gst_meta_get(gst_buffer)) == 0
+    print("test_get_metadata pass")
 
 
 # def test_gst_buffer_to_ndarray():
@@ -230,3 +195,4 @@ if __name__ == "__main__":
     test_video_sink()
     test_video_source()
     test_gst_pipeline()
+    test_metadata()

@@ -21,8 +21,7 @@ class GstObjectInfoArray(Structure):
     _fields_ = [("items", POINTER(GstObjectInfo)),
                 ("size", c_int)]
 
-print("test me with: LIB_INFO_META_PATH=/home/ivo/turbox/apps_proc/src/vendor/qcom/opensource/gst-plugins-qti-oss/python/gstreamer/libgst_objects_info_meta.so test.py")
-
+print("test me with: LIB_INFO_META_PATH=./x64/libgst_objects_info_meta.so python3 test.py")
 GstObjectInfoArrayPtr = POINTER(GstObjectInfoArray)
 
 cwd = os.path.dirname(os.path.abspath(__file__))
