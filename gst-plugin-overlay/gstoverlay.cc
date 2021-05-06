@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+* Copyright (c) 2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -37,6 +37,9 @@
 
 #include "gstoverlay.h"
 
+#define GST_CAT_DEFAULT overlay_debug
+GST_DEBUG_CATEGORY_STATIC (overlay_debug);
+
 #define gst_overlay_parent_class parent_class
 G_DEFINE_TYPE (GstOverlay, gst_overlay, GST_TYPE_VIDEO_FILTER);
 
@@ -58,7 +61,7 @@ G_DEFINE_TYPE (GstOverlay, gst_overlay, GST_TYPE_VIDEO_FILTER);
 #define DEFAULT_PROP_DEST_RECT_X      40
 #define DEFAULT_PROP_DEST_RECT_Y      40
 #define DEFAULT_PROP_DEST_RECT_WIDTH  200
-#define DEFAULT_PROP_DEST_RECT_HEIGHT 48
+#define DEFAULT_PROP_DEST_RECT_HEIGHT 40
 
 
 /* This is initial value. Size is recalculated runtime and buffer is
@@ -294,6 +297,7 @@ gst_overlay_apply_bbox_item (GstOverlay * gst_overlay, GstVideoRectangle * bbox,
   if (!(*item_id)) {
     ov_param = {};
     ov_param.type = OverlayType::kBoundingBox;
+    ov_param.location = OverlayLocationType::kTopLeft;
   } else {
     ret = gst_overlay->overlay->GetOverlayParams (*item_id, ov_param);
     if (ret != 0) {
@@ -309,7 +313,7 @@ gst_overlay_apply_bbox_item (GstOverlay * gst_overlay, GstVideoRectangle * bbox,
   ov_param.dst_rect.height = bbox->h;
 
   if (sizeof (ov_param.bounding_box.box_name) <= strlen (label)) {
-    GST_ERROR_OBJECT (gst_overlay, "Text size exceeded %zu <= %zu",
+    GST_ERROR_OBJECT (gst_overlay, "Text size exceeded %d <= %d",
         sizeof (ov_param.bounding_box.box_name), strlen (label));
     return FALSE;
   }
@@ -354,6 +358,9 @@ static gboolean
 gst_overlay_apply_ml_bbox_item (GstOverlay * gst_overlay, gpointer metadata,
     uint32_t * item_id)
 {
+  OverlayParam ov_param;
+  int32_t ret = 0;
+
   g_return_val_if_fail (gst_overlay != NULL, FALSE);
   g_return_val_if_fail (metadata != NULL, FALSE);
   g_return_val_if_fail (item_id != NULL, FALSE);
@@ -432,6 +439,8 @@ gst_overlay_apply_simg_item (GstOverlay *gst_overlay, gpointer img_buffer,
   if (!(*item_id)) {
     ov_param = {};
     ov_param.type = OverlayType::kStaticImage;
+    ov_param.image_info.image_type = OverlayImageType::kBlobType;
+    ov_param.location = OverlayLocationType::kRandom;
   } else {
     ret = gst_overlay->overlay->GetOverlayParams (*item_id, ov_param);
     if (ret != 0) {
@@ -559,6 +568,7 @@ gst_overlay_apply_user_simg_item (gpointer data, gpointer user_data)
  * @gst_overlay: context
  * @name: overlay text
  * @color: text overlay
+ * @location: render location in video stream
  * @dest_rect: render destination rectangle in video stream
  * @item_id: pointer to overlay item instance id
  *
@@ -568,7 +578,8 @@ gst_overlay_apply_user_simg_item (gpointer data, gpointer user_data)
  */
 static gboolean
 gst_overlay_apply_text_item (GstOverlay * gst_overlay, gchar * name,
-    guint color, GstVideoRectangle * dest_rect, uint32_t * item_id)
+    guint color, OverlayLocationType location, GstVideoRectangle * dest_rect,
+    uint32_t * item_id)
 {
   OverlayParam ov_param;
   int32_t ret = 0;
@@ -590,13 +601,14 @@ gst_overlay_apply_text_item (GstOverlay * gst_overlay, gchar * name,
   }
 
   ov_param.color = color;
+  ov_param.location = OverlayLocationType::kNone;
   ov_param.dst_rect.start_x = dest_rect->x;
   ov_param.dst_rect.start_y = dest_rect->y;
   ov_param.dst_rect.width = dest_rect->w;
   ov_param.dst_rect.height = dest_rect->h;
 
   if (sizeof (ov_param.user_text) <= strlen (name)) {
-    GST_ERROR_OBJECT (gst_overlay, "Text size exceeded %zu <= %zu",
+    GST_ERROR_OBJECT (gst_overlay, "Text size exceeded %d <= %d",
       sizeof (ov_param.user_text), strlen (name));
     return FALSE;
   }
@@ -647,7 +659,8 @@ gst_overlay_apply_ml_text_item (GstOverlay *gst_overlay, gpointer metadata,
   GstMLClassificationMeta * meta = (GstMLClassificationMeta *) metadata;
 
   return gst_overlay_apply_text_item (gst_overlay, meta->result.name,
-    gst_overlay->text_color, &gst_overlay->text_dest_rect, item_id);
+    gst_overlay->text_color, OverlayLocationType::kTopLeft,
+    &gst_overlay->text_dest_rect, item_id);
 }
 
 /**
@@ -669,7 +682,8 @@ gst_overlay_apply_user_text_item (gpointer data, gpointer user_data)
 
   if (!ov_data->base.is_applied) {
     gboolean res = gst_overlay_apply_text_item (gst_overlay, ov_data->text,
-      ov_data->color, &ov_data->dest_rect, &ov_data->base.item_id);
+      ov_data->color, OverlayLocationType::kNone, &ov_data->dest_rect,
+      &ov_data->base.item_id);
     if (!res) {
       GST_ERROR_OBJECT (gst_overlay, "User overlay apply failed!");
       return;
@@ -846,7 +860,7 @@ gst_overlay_apply_ml_pose_item (GstOverlay *gst_overlay, gpointer metadata,
 
   count = 0;
   ov_param.graph.chain_count = 0;
-  for (guint i = 0; i < sizeof (PoseChain) / sizeof (PoseChain[0]); i++) {
+  for (gint i = 0; i < sizeof (PoseChain) / sizeof (PoseChain[0]); i++) {
     GstMLKeyPointsType point0 = PoseChain[i][0];
     GstMLKeyPointsType point1 = PoseChain[i][1];
     if (pose->points[point0].score > kScoreTreshold &&
@@ -886,7 +900,8 @@ gst_overlay_apply_ml_pose_item (GstOverlay *gst_overlay, gpointer metadata,
  * @gst_overlay: context
  * @time_format: time format
  * @date_format: date format
- * @color: date and time color
+ * @color:  date and time color
+ * @location: render location in video stream
  * @dest_rect: render destination rectangle in video stream
  * @item_id: pointer to overlay item instance id
  *
@@ -897,7 +912,8 @@ gst_overlay_apply_ml_pose_item (GstOverlay *gst_overlay, gpointer metadata,
 static gboolean
 gst_overlay_apply_date_item (GstOverlay *gst_overlay,
     OverlayTimeFormatType time_format, OverlayDateFormatType date_format,
-    guint color, GstVideoRectangle * dest_rect, uint32_t * item_id)
+    guint color, OverlayLocationType location, GstVideoRectangle * dest_rect,
+    uint32_t * item_id)
 {
   OverlayParam ov_param;
   int32_t ret = 0;
@@ -917,6 +933,7 @@ gst_overlay_apply_date_item (GstOverlay *gst_overlay,
   }
 
   ov_param.color = color;
+  ov_param.location = location;
   ov_param.dst_rect.start_x = dest_rect->x;
   ov_param.dst_rect.start_y = dest_rect->y;
   ov_param.dst_rect.width = dest_rect->w;
@@ -967,7 +984,7 @@ gst_overlay_apply_user_date_item (gpointer data, gpointer user_data)
   if (!ov_data->base.is_applied) {
     gboolean res = gst_overlay_apply_date_item (gst_overlay,
       ov_data->time_format, ov_data->date_format, ov_data->color,
-      &ov_data->dest_rect, &ov_data->base.item_id);
+      OverlayLocationType::kNone, &ov_data->dest_rect, &ov_data->base.item_id);
     if (!res) {
       GST_ERROR_OBJECT (gst_overlay, "User overlay apply failed!");
       return;
@@ -1015,6 +1032,7 @@ gst_overlay_apply_mask_item (GstOverlay * gst_overlay,
   }
 
   ov_param.color = color;
+  ov_param.location = OverlayLocationType::kNone;
   ov_param.dst_rect.start_x = dest_rect->x;
   ov_param.dst_rect.start_y = dest_rect->y;
   ov_param.dst_rect.width = dest_rect->w;
@@ -1099,10 +1117,6 @@ gst_overlay_apply_overlay (GstOverlay *gst_overlay, GstVideoFrame *frame)
   OverlayTargetBuffer overlay_buf;
   overlay_buf.width     = GST_VIDEO_FRAME_WIDTH (frame);
   overlay_buf.height    = GST_VIDEO_FRAME_HEIGHT (frame);
-  overlay_buf.offset[0] = GST_VIDEO_FRAME_PLANE_OFFSET(frame, 0);
-  overlay_buf.offset[1] = GST_VIDEO_FRAME_PLANE_OFFSET(frame, 1);
-  overlay_buf.stride[0] = GST_VIDEO_FRAME_PLANE_STRIDE(frame, 0);
-  overlay_buf.stride[1] = GST_VIDEO_FRAME_PLANE_STRIDE(frame, 1);
   overlay_buf.ion_fd    = fd;
   overlay_buf.frame_len = gst_buffer_get_size (frame->buffer);
   overlay_buf.format    = gst_overlay->format;
@@ -2436,6 +2450,8 @@ gst_overlay_init (GstOverlay * gst_overlay)
   gst_overlay->text_dest_rect.h = DEFAULT_PROP_DEST_RECT_HEIGHT;
 
   g_mutex_init (&gst_overlay->lock);
+
+  GST_DEBUG_CATEGORY_INIT (overlay_debug, "qtioverlay", 0, "QTI overlay");
 }
 
 static void

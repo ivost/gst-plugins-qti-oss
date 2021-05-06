@@ -41,7 +41,6 @@
 #include <fastcv/fastcv.h>
 
 #include "nndriver.h"
-#include "engines/common_utils.h"
 
 #define DEEP_LAP_PATH_LEN 512
 
@@ -91,7 +90,7 @@ public:
 
   ~Timer () {
     uint64_t end = GetMicroSeconds();
-    NN_LOGV("%s: %" G_GINT64_FORMAT " us", str.c_str(), end - begin);
+    ALOGD("%s: %" G_GINT64_FORMAT " us", str.c_str(), end - begin);
   }
 };
 

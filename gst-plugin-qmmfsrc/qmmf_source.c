@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+* Copyright (c) 2019-2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -56,16 +56,16 @@ GST_DEBUG_CATEGORY_STATIC (qmmfsrc_debug);
 #define DEFAULT_PROP_CAMERA_EFFECT_MODE               EFFECT_MODE_OFF
 #define DEFAULT_PROP_CAMERA_SCENE_MODE                SCENE_MODE_FACE_PRIORITY
 #define DEFAULT_PROP_CAMERA_ANTIBANDING               ANTIBANDING_MODE_AUTO
-#define DEFAULT_PROP_CAMERA_EXPOSURE_MODE             EXPOSURE_MODE_AUTO
-#define DEFAULT_PROP_CAMERA_EXPOSURE_LOCK             FALSE
-#define DEFAULT_PROP_CAMERA_EXPOSURE_METERING         EXPOSURE_METERING_AVERAGE
-#define DEFAULT_PROP_CAMERA_EXPOSURE_COMPENSATION     0
+#define DEFAULT_PROP_CAMERA_AE_COMPENSATION           0
+#define DEFAULT_PROP_CAMERA_AE_METERING_MODE          AE_METERING_MODE_AVERAGE
+#define DEFAULT_PROP_CAMERA_AE_MODE                   AE_MODE_ON
+#define DEFAULT_PROP_CAMERA_AE_LOCK                   FALSE
 #define DEFAULT_PROP_CAMERA_EXPOSURE_TABLE            NULL
-#define DEFAULT_PROP_CAMERA_EXPOSURE_TIME             30000000
+#define DEFAULT_PROP_CAMERA_EXPOSURE_TIME             0
 #define DEFAULT_PROP_CAMERA_WHITE_BALANCE_MODE        WHITE_BALANCE_MODE_AUTO
 #define DEFAULT_PROP_CAMERA_WHITE_BALANCE_LOCK        FALSE
 #define DEFAULT_PROP_CAMERA_MANUAL_WB_SETTINGS        NULL
-#define DEFAULT_PROP_CAMERA_FOCUS_MODE                FOCUS_MODE_OFF
+#define DEFAULT_PROP_CAMERA_AF_MODE                   AF_MODE_OFF
 #define DEFAULT_PROP_CAMERA_IR_MODE                   IR_MODE_OFF
 #define DEFAULT_PROP_CAMERA_NOISE_REDUCTION           NOISE_REDUCTION_FAST
 #define DEFAULT_PROP_CAMERA_ISO_MODE                  ISO_MODE_AUTO
@@ -104,16 +104,16 @@ enum
   PROP_CAMERA_EFFECT_MODE,
   PROP_CAMERA_SCENE_MODE,
   PROP_CAMERA_ANTIBANDING_MODE,
-  PROP_CAMERA_EXPOSURE_MODE,
-  PROP_CAMERA_EXPOSURE_LOCK,
-  PROP_CAMERA_EXPOSURE_METERING,
-  PROP_CAMERA_EXPOSURE_COMPENSATION,
+  PROP_CAMERA_AE_COMPENSATION,
+  PROP_CAMERA_AE_METERING_MODE,
+  PROP_CAMERA_AE_MODE,
+  PROP_CAMERA_AE_LOCK,
   PROP_CAMERA_EXPOSURE_TIME,
   PROP_CAMERA_EXPOSURE_TABLE,
   PROP_CAMERA_WHITE_BALANCE_MODE,
   PROP_CAMERA_WHITE_BALANCE_LOCK,
   PROP_CAMERA_MANUAL_WB_SETTINGS,
-  PROP_CAMERA_FOCUS_MODE,
+  PROP_CAMERA_AF_MODE,
   PROP_CAMERA_IR_MODE,
   PROP_CAMERA_ISO_MODE,
   PROP_CAMERA_NOISE_REDUCTION,
@@ -133,20 +133,11 @@ static GstStaticPadTemplate qmmfsrc_video_src_template =
 #if defined(GST_VIDEO_H265_ENABLE)
             QMMFSRC_VIDEO_H265_CAPS "; "
 #endif
-            QMMFSRC_VIDEO_JPEG_CAPS "; "
             QMMFSRC_VIDEO_RAW_CAPS(
-#if defined(GST_VIDEO_YUY2_FORMAT_ENABLE)
-                "{ NV12, YUY2 }") "; "
-#else
                 "{ NV12 }") "; "
-#endif
             QMMFSRC_VIDEO_RAW_CAPS_WITH_FEATURES(
                 GST_CAPS_FEATURE_MEMORY_GBM,
-#if defined(GST_VIDEO_YUY2_FORMAT_ENABLE)
-                "{ NV12, YUY2 }") "; "
-#else
                 "{ NV12 }") "; "
-#endif
             QMMFSRC_VIDEO_BAYER_CAPS(
                 "{ bggr, rggb, gbrg, grbg, mono }",
                 "{ 8, 10, 12, 16 }")
@@ -297,8 +288,6 @@ qmmfsrc_request_pad (GstElement * element, GstPadTemplate * templ,
   g_signal_connect (srcpad, "notify::framerate",
       G_CALLBACK (gst_qmmf_context_update_video_param), qmmfsrc->context);
   g_signal_connect (srcpad, "notify::idr-interval",
-      G_CALLBACK (gst_qmmf_context_update_video_param), qmmfsrc->context);
-  g_signal_connect (srcpad, "notify::crop",
       G_CALLBACK (gst_qmmf_context_update_video_param), qmmfsrc->context);
 
   return srcpad;
@@ -726,21 +715,21 @@ qmmfsrc_set_property (GObject * object, guint property_id,
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
           PARAM_CAMERA_ANTIBANDING_MODE, value);
       break;
-    case PROP_CAMERA_EXPOSURE_MODE:
+    case PROP_CAMERA_AE_COMPENSATION:
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_MODE, value);
+          PARAM_CAMERA_AE_COMPENSATION, value);
       break;
-    case PROP_CAMERA_EXPOSURE_LOCK:
+    case PROP_CAMERA_AE_METERING_MODE:
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_LOCK, value);
+          PARAM_CAMERA_AE_METERING_MODE, value);
       break;
-    case PROP_CAMERA_EXPOSURE_METERING:
+    case PROP_CAMERA_AE_MODE:
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_METERING, value);
+          PARAM_CAMERA_AE_MODE, value);
       break;
-    case PROP_CAMERA_EXPOSURE_COMPENSATION:
+    case PROP_CAMERA_AE_LOCK:
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_COMPENSATION, value);
+          PARAM_CAMERA_AE_LOCK, value);
       break;
     case PROP_CAMERA_EXPOSURE_TIME:
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
@@ -762,9 +751,9 @@ qmmfsrc_set_property (GObject * object, guint property_id,
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
           PARAM_CAMERA_MANUAL_WB_SETTINGS, value);
       break;
-    case PROP_CAMERA_FOCUS_MODE:
+    case PROP_CAMERA_AF_MODE:
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_FOCUS_MODE, value);
+          PARAM_CAMERA_AF_MODE, value);
       break;
     case PROP_CAMERA_IR_MODE:
       gst_qmmf_context_set_camera_param (qmmfsrc->context,
@@ -848,21 +837,21 @@ qmmfsrc_get_property (GObject * object, guint property_id, GValue * value,
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
           PARAM_CAMERA_ANTIBANDING_MODE, value);
       break;
-    case PROP_CAMERA_EXPOSURE_MODE:
+    case PROP_CAMERA_AE_COMPENSATION:
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_MODE, value);
+          PARAM_CAMERA_AE_COMPENSATION, value);
       break;
-    case PROP_CAMERA_EXPOSURE_LOCK:
+    case PROP_CAMERA_AE_METERING_MODE:
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_LOCK, value);
+          PARAM_CAMERA_AE_METERING_MODE, value);
       break;
-    case PROP_CAMERA_EXPOSURE_METERING:
+    case PROP_CAMERA_AE_MODE:
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_METERING, value);
+          PARAM_CAMERA_AE_MODE, value);
       break;
-    case PROP_CAMERA_EXPOSURE_COMPENSATION:
+    case PROP_CAMERA_AE_LOCK:
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_EXPOSURE_COMPENSATION, value);
+          PARAM_CAMERA_AE_LOCK, value);
       break;
     case PROP_CAMERA_EXPOSURE_TIME:
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
@@ -884,9 +873,9 @@ qmmfsrc_get_property (GObject * object, guint property_id, GValue * value,
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
           PARAM_CAMERA_MANUAL_WB_SETTINGS, value);
       break;
-    case PROP_CAMERA_FOCUS_MODE:
+    case PROP_CAMERA_AF_MODE:
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
-          PARAM_CAMERA_FOCUS_MODE, value);
+          PARAM_CAMERA_AF_MODE, value);
       break;
     case PROP_CAMERA_IR_MODE:
       gst_qmmf_context_get_camera_param (qmmfsrc->context,
@@ -1022,49 +1011,44 @@ qmmfsrc_class_init (GstQmmfSrcClass * klass)
            GST_TYPE_QMMFSRC_ANTIBANDING, DEFAULT_PROP_CAMERA_ANTIBANDING,
            G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
            GST_PARAM_MUTABLE_PLAYING));
-  g_object_class_install_property (gobject, PROP_CAMERA_EXPOSURE_MODE,
-      g_param_spec_enum ("exposure-mode", "Exposure Mode",
-          "The desired mode for the camera's exposure routine.",
-          GST_TYPE_QMMFSRC_EXPOSURE_MODE, DEFAULT_PROP_CAMERA_EXPOSURE_MODE,
+  g_object_class_install_property (gobject, PROP_CAMERA_AE_COMPENSATION,
+      g_param_spec_int ("ae-compensation", "AE Compensation",
+          "Auto Exposure Compensation",
+          -12, 12, DEFAULT_PROP_CAMERA_AE_COMPENSATION,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
-  g_object_class_install_property (gobject, PROP_CAMERA_EXPOSURE_LOCK,
-      g_param_spec_boolean ("exposure-lock", "Exposure Lock",
-          "Locks current camera exposure routine values from changing.",
-          DEFAULT_PROP_CAMERA_EXPOSURE_LOCK,
+  g_object_class_install_property (gobject, PROP_CAMERA_AE_METERING_MODE,
+      g_param_spec_enum ("ae-metering-mode", "AE Metering Mode",
+          "Auro exposure metering mode",
+          GST_TYPE_QMMFSRC_AE_METERING_MODE, DEFAULT_PROP_CAMERA_AE_METERING_MODE,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
-  g_object_class_install_property (gobject, PROP_CAMERA_EXPOSURE_METERING,
-      g_param_spec_enum ("exposure-metering", "Exposure Metering",
-          "The desired mode for the camera's exposure metering routine.",
-          GST_TYPE_QMMFSRC_EXPOSURE_METERING,
-          DEFAULT_PROP_CAMERA_EXPOSURE_METERING,
+  g_object_class_install_property (gobject, PROP_CAMERA_AE_MODE,
+      g_param_spec_enum ("ae-mode", "AE Mode",
+          "Auto Exposure mode",
+          GST_TYPE_QMMFSRC_AE_MODE, DEFAULT_PROP_CAMERA_AE_MODE,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
-  g_object_class_install_property (gobject, PROP_CAMERA_EXPOSURE_COMPENSATION,
-      g_param_spec_int ("exposure-compensation", "Exposure Compensation",
-          "Adjust (Compensate) camera images target brightness. Adjustment is "
-          "measured as a count of steps.",
-          -12, 12, DEFAULT_PROP_CAMERA_EXPOSURE_COMPENSATION,
+  g_object_class_install_property (gobject, PROP_CAMERA_AE_LOCK,
+      g_param_spec_boolean ("ae-lock", "AE Lock",
+          "Auto Exposure lock", DEFAULT_PROP_CAMERA_AE_LOCK,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
   g_object_class_install_property (gobject, PROP_CAMERA_EXPOSURE_TIME,
-      g_param_spec_int64 ("manual-exposure-time", "Manual Exposure Time",
-           "Manual exposure time in nanoseconds. Used when the Exposure mode"
-           " is set to 'off'.",
-           0, G_MAXINT64, DEFAULT_PROP_CAMERA_EXPOSURE_TIME,
+      g_param_spec_int64 ("exposure-time", "Exposure Time",
+           "Manual exposure time in nanoseconds. Used when the AE mode is "
+           "set to 'off'", 0, G_MAXINT64, DEFAULT_PROP_CAMERA_EXPOSURE_TIME,
            G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
            GST_PARAM_MUTABLE_PLAYING));
   g_object_class_install_property (gobject, PROP_CAMERA_EXPOSURE_TABLE,
-      g_param_spec_string ("custom-exposure-table", "Custom Exposure Table",
-          "A GstStructure describing custom exposure table",
+      g_param_spec_string ("exposure-table", "Exposure Table",
+          "A GstStructure describing exposure table",
           DEFAULT_PROP_CAMERA_EXPOSURE_TABLE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
   g_object_class_install_property (gobject, PROP_CAMERA_WHITE_BALANCE_MODE,
       g_param_spec_enum ("white-balance-mode", "White Balance Mode",
-          "The desired mode for the camera's white balance routine.",
-          GST_TYPE_QMMFSRC_WHITE_BALANCE_MODE,
+          "White Balance mode.", GST_TYPE_QMMFSRC_WHITE_BALANCE_MODE,
           DEFAULT_PROP_CAMERA_WHITE_BALANCE_MODE,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
@@ -1082,10 +1066,10 @@ qmmfsrc_class_init (GstQmmfSrcClass * klass)
           DEFAULT_PROP_CAMERA_MANUAL_WB_SETTINGS,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
-  g_object_class_install_property (gobject, PROP_CAMERA_FOCUS_MODE,
-      g_param_spec_enum ("focus-mode", "Focus Mode",
-          "Whether auto-focus is currently enabled, and in what mode it is.",
-          GST_TYPE_QMMFSRC_FOCUS_MODE, DEFAULT_PROP_CAMERA_FOCUS_MODE,
+  g_object_class_install_property (gobject, PROP_CAMERA_AF_MODE,
+      g_param_spec_enum ("af-mode", "AF Mode",
+          "Auto Focus mode",
+          GST_TYPE_QMMFSRC_AF_MODE, DEFAULT_PROP_CAMERA_AF_MODE,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_PLAYING));
   g_object_class_install_property (gobject, PROP_CAMERA_IR_MODE,

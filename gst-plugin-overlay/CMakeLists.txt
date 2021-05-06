@@ -29,6 +29,7 @@ add_definitions(-DHAVE_CONFIG_H)
 # Common compiler flags.
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
+set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -DUSE_SKIA=0 -DUSE_CAIRO=1")
 
 # GStreamer plugin.
 set(GST_QTI_OVERLAY qtioverlay)
@@ -45,7 +46,7 @@ target_include_directories(${GST_QTI_OVERLAY} PRIVATE
 )
 
 target_link_libraries(${GST_QTI_OVERLAY} PRIVATE
-  overlay_lib
+  qmmf_overlay
   qtimlmeta
   ${GST_LIBRARIES}
   ${GST_ALLOC_LIBRARIES}
@@ -59,5 +60,3 @@ install(
               GROUP_EXECUTE GROUP_READ
               GROUP_EXECUTE GROUP_READ
 )
-
-add_subdirectory(overlay-lib)

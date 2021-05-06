@@ -6,7 +6,6 @@ add_library(${MNET_SSD} SHARED
 
 target_include_directories(${MNET_SSD} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_SOURCE_DIR}
 )
 
 target_link_libraries(${MNET_SSD} PUBLIC

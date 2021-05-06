@@ -47,7 +47,7 @@ uint32_t NNDriverHVX::GraphSetup(std::string &lib_name)
   void *libptr = dlopen(lib_name.c_str(), RTLD_LAZY);
   auto err = dlerror();
   if (err) {
-    NN_LOGE("%s: dlopen failed: %s", __func__, dlerror());
+    ALOGE("%s: dlopen failed: %s", __func__, dlerror());
     return id;
   }
 
@@ -56,7 +56,7 @@ uint32_t NNDriverHVX::GraphSetup(std::string &lib_name)
   *(void **)&(init_graph) = dlsym(libptr, "init_graph");
   err = dlerror();
   if (err) {
-    NN_LOGE("dlsym failed: %s", err);
+    ALOGE("dlsym failed: %s", err);
     dlclose(libptr);
     return id;
   }
@@ -71,14 +71,14 @@ uint32_t NNDriverHVX::GraphSetup(std::string &lib_name)
 
       ret = hexagon_nn_domains_prepare(handle_, id);
       if (0 != ret) {
-        NN_LOGE(" hexagon_nn_domains_prepare failed: %d\n", ret);
+        ALOGE(" hexagon_nn_domains_prepare failed: %d\n", ret);
         id = 0;
       }
     } else {
-      NN_LOGE(" hexagon_nn_domains_set_powersave_level failed: %d\n", ret);
+      ALOGE(" hexagon_nn_domains_set_powersave_level failed: %d\n", ret);
     }
   } else {
-    NN_LOGE(" hexagon_nn_domains_init failed: %d\n", ret);
+    ALOGE(" hexagon_nn_domains_init failed: %d\n", ret);
   }
 
   dlclose(libptr);
@@ -120,7 +120,7 @@ int32_t NNDriverHVX::Init(
   *input_buf = nn_in_buf_;
 
   if (NULL == nn_in_buf_) {
-    NN_LOGE(" RPC buffer allocation failed\n");
+    ALOGE(" RPC buffer allocation failed\n");
     ret = -1;
   }
 
@@ -129,7 +129,7 @@ int32_t NNDriverHVX::Init(
     nn_out_bufs_[i] = static_cast<void *>(
         rpcmem_alloc(kIonHeapIdSystem, RPCMEM_DEFAULT_FLAGS, out_sizes_[i]));
     if (NULL == nn_out_bufs_[i]) {
-      NN_LOGE(" RPC buffer allocation failed\n");
+      ALOGE(" RPC buffer allocation failed\n");
       ret = -1;
       break;
     }
@@ -147,10 +147,10 @@ int32_t NNDriverHVX::Init(
 
     graph_id_ = GraphSetup(lib_name);
     if (0 == graph_id_) {
-      NN_LOGE(" Graph setup failed\n");
+      ALOGE(" Graph setup failed\n");
       ret = -1;
     } else {
-      NN_LOGD(" NNDriver_Init success\n");
+      ALOGD(" NNDriver_Init success\n");
     }
   }
 

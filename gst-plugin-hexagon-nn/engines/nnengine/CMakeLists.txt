@@ -6,7 +6,6 @@ add_library(${NNENGINE} SHARED
 
 target_include_directories(${NNENGINE} PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_SOURCE_DIR}
   ${GST_INCLUDE_DIRS}
 )
 

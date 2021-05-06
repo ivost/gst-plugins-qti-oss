@@ -1,5 +1,5 @@
 /*
-* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+* Copyright (c) 2020, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -102,14 +102,14 @@ struct _GstQmmfContext {
   guchar            scene;
   /// Camera antibanding mode property.
   guchar            antibanding;
-  /// Camera Exposure mode property.
-  guchar            expmode;
-  /// Camera Exposure routine lock property.
-  gboolean          explock;
+  /// Camera Auto Exposure compensation property.
+  gint              aecompensation;
   /// Camera Exposure metering mode property.
   gint              expmetering;
-  /// Camera Exposure compensation property.
-  gint              expcompensation;
+  /// Camera Auto Exposure mode property.
+  guchar            aemode;
+  /// Camera Auto Exposure Compensation lock property.
+  gboolean          aelock;
   /// Camera Manual Exposure time property.
   gint64            exptime;
   /// Camera Exposure table property.
@@ -501,27 +501,27 @@ initialize_camera_param (GstQmmfContext * context)
   QMMFSRC_RETURN_VAL_IF_FAIL (NULL, status == 0, FALSE,
       "QMMF Recorder GetCameraParam Failed!");
 
-  numvalue = gst_qmmfsrc_effect_mode_android_value (context->effect);
+  numvalue = gst_qmmfsrc_effect_mode_android_value(context->effect);
   meta.update(ANDROID_CONTROL_EFFECT_MODE, &numvalue, 1);
 
-  numvalue = gst_qmmfsrc_scene_mode_android_value (context->scene);
+  numvalue = gst_qmmfsrc_scene_mode_android_value(context->scene);
   meta.update(ANDROID_CONTROL_SCENE_MODE, &numvalue, 1);
 
-  numvalue = gst_qmmfsrc_antibanding_android_value (context->antibanding);
+  numvalue = gst_qmmfsrc_antibanding_android_value(context->antibanding);
   meta.update(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &numvalue, 1);
 
   meta.update(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION,
-              &(context)->expcompensation, 1);
+              &(context)->aecompensation, 1);
 
-  numvalue = gst_qmmfsrc_exposure_mode_android_value (context->expmode);
+  numvalue = gst_qmmfsrc_ae_mode_android_value(context->aemode);
   meta.update(ANDROID_CONTROL_AE_MODE, &numvalue, 1);
 
-  numvalue = context->explock;
+  numvalue = context->aelock;
   meta.update(ANDROID_CONTROL_AE_LOCK, &numvalue, 1);
 
   meta.update(ANDROID_SENSOR_EXPOSURE_TIME, &(context)->exptime, 1);
 
-  numvalue = gst_qmmfsrc_white_balance_mode_android_value (context->wbmode);
+  numvalue = gst_qmmfsrc_wb_mode_android_value(context->wbmode);
 
   // If the returned value is not UCHAR_MAX then we have an Android enum.
   if (numvalue != UCHAR_MAX)
@@ -538,10 +538,10 @@ initialize_camera_param (GstQmmfContext * context)
   numvalue = context->wblock;
   meta.update(ANDROID_CONTROL_AWB_LOCK, &numvalue, 1);
 
-  numvalue = gst_qmmfsrc_focus_mode_android_value (context->afmode);
+  numvalue = gst_qmmfsrc_af_mode_android_value(context->afmode);
   meta.update(ANDROID_CONTROL_AF_MODE, &numvalue, 1);
 
-  numvalue = gst_qmmfsrc_noise_reduction_android_value (context->nrmode);
+  numvalue = gst_qmmfsrc_noise_reduction_android_value(context->nrmode);
   meta.update(ANDROID_NOISE_REDUCTION_MODE, &numvalue, 1);
 
   numvalue = context->adrc;
@@ -556,7 +556,7 @@ initialize_camera_param (GstQmmfContext * context)
     meta.update(ANDROID_SCALER_CROP_REGION, crop, 4);
   }
 
-  tag_id = get_vendor_tag_by_name ("org.codeaurora.qcamera3.ir_led", "mode");
+  tag_id = get_vendor_tag_by_name("org.codeaurora.qcamera3.ir_led", "mode");
   if (tag_id != 0)
     meta.update(tag_id, &(context)->irmode, 1);
 
@@ -572,7 +572,7 @@ initialize_camera_param (GstQmmfContext * context)
     if (tag_id != 0)
       meta.update(tag_id, &(context)->isomode, 1);
 
-  tag_id = get_vendor_tag_by_name ("org.codeaurora.qcamera3.exposure_metering",
+  tag_id = get_vendor_tag_by_name("org.codeaurora.qcamera3.exposure_metering",
                                   "exposure_metering_mode");
   if (tag_id != 0)
     meta.update(tag_id, &(context)->expmetering, 1);
@@ -1103,9 +1103,6 @@ gst_qmmf_context_create_video_stream (GstQmmfContext * context, GstPad * pad)
     case GST_VIDEO_CODEC_H265:
       format = ::qmmf::VideoFormat::kHEVC;
       break;
-    case GST_VIDEO_CODEC_JPEG:
-      format = ::qmmf::VideoFormat::kJPEG;
-      break;
     case GST_VIDEO_CODEC_NONE:
       // Not an encoded stream.
       break;
@@ -1119,9 +1116,6 @@ gst_qmmf_context_create_video_stream (GstQmmfContext * context, GstPad * pad)
     case GST_VIDEO_FORMAT_NV12:
       format = (vpad->compression == GST_VIDEO_COMPRESSION_UBWC) ?
           ::qmmf::VideoFormat::kNV12UBWC : ::qmmf::VideoFormat::kNV12;
-      break;
-    case GST_VIDEO_FORMAT_YUY2:
-      format = ::qmmf::VideoFormat::kYUY2;
       break;
     case GST_BAYER_FORMAT_BGGR:
     case GST_BAYER_FORMAT_RGGB:
@@ -1410,55 +1404,6 @@ gst_qmmf_context_create_video_stream (GstQmmfContext * context, GstPad * pad)
       "QMMF Recorder CreateVideoTrack Failed!");
 
   GST_TRACE ("QMMF context video stream created");
-
-  // Update crop metadata parameters.
-  if (vpad->crop.x < 0 || vpad->crop.x > vpad->width) {
-    GST_WARNING ("Cannot apply crop, X axis value outside stream width!");
-  } else if (vpad->crop.y < 0 || vpad->crop.y > vpad->height) {
-    GST_WARNING ("Cannot apply crop, Y axis value outside stream height!");
-  } else if (vpad->crop.w < 0 || vpad->crop.w > (vpad->width - vpad->crop.x)) {
-    GST_WARNING ("Cannot apply crop, width value outside stream width!");
-  } else if (vpad->crop.h < 0 || vpad->crop.h > (vpad->height - vpad->crop.y)) {
-    GST_WARNING ("Cannot apply crop, height value outside stream height!");
-  } else if ((vpad->crop.w == 0 && vpad->crop.h != 0) ||
-      (vpad->crop.w != 0 && vpad->crop.h == 0)) {
-    GST_WARNING ("Cannot apply crop, width and height must either both be 0 "
-        "or both be positive values !");
-  } else if ((vpad->crop.w == 0 && vpad->crop.h == 0) &&
-      (vpad->crop.x != 0 || vpad->crop.y != 0)) {
-    GST_WARNING ("Cannot apply crop, width and height values are 0 but "
-        "X and/or Y are not 0!");
-  } else {
-    ::android::CameraMetadata meta;
-    guint tag_id = 0;
-    gint32 ivalue = 0;
-
-    recorder->GetCameraParam (context->camera_id, meta);
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropX");
-    ivalue = vpad->crop.x;
-
-    if (meta.update (tag_id, &ivalue, 1) != 0)
-      GST_WARNING ("Failed to update X axis crop value");
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropY");
-    if (meta.update (tag_id, &vpad->crop.y, 1) != 0)
-      GST_WARNING ("Failed to update Y axis crop value");
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropWidth");
-    if (meta.update (tag_id, &vpad->crop.w, 1) != 0)
-      GST_WARNING ("Failed to update crop width");
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropHeight");
-    if (meta.update (tag_id, &vpad->crop.h, 1) != 0)
-      GST_WARNING ("Failed to update crop height");
-
-    recorder->SetCameraParam (context->camera_id, meta);
-  }
 
   context->pads = g_list_append (context->pads, pad);
   return TRUE;
@@ -1833,49 +1778,39 @@ gst_qmmf_context_set_camera_param (GstQmmfContext * context, guint param_id,
       meta.update(ANDROID_CONTROL_AE_ANTIBANDING_MODE, &mode, 1);
       break;
     }
-    case PARAM_CAMERA_EXPOSURE_MODE:
+    case PARAM_CAMERA_AE_COMPENSATION:
+    {
+      gint compensation;
+      context->aecompensation = g_value_get_int (value);
+
+      compensation = context->aecompensation;
+      meta.update(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, &compensation, 1);
+      break;
+    }
+    case PARAM_CAMERA_AE_MODE:
     {
       guchar mode;
-      context->expmode = g_value_get_enum (value);
+      context->aemode = g_value_get_enum (value);
 
-      mode = gst_qmmfsrc_exposure_mode_android_value (context->expmode);
+      mode = gst_qmmfsrc_ae_mode_android_value (context->aemode);
       meta.update(ANDROID_CONTROL_AE_MODE, &mode, 1);
       break;
     }
-    case PARAM_CAMERA_EXPOSURE_LOCK:
+    case PARAM_CAMERA_AE_LOCK:
     {
       guchar lock;
-      context->explock = g_value_get_boolean (value);
+      context->aelock = g_value_get_boolean (value);
 
-      lock = context->explock;
+      lock = context->aelock;
       meta.update(ANDROID_CONTROL_AE_LOCK, &lock, 1);
-      break;
-    }
-    case PARAM_CAMERA_EXPOSURE_METERING:
-    {
-      guint tag_id = get_vendor_tag_by_name (
-          "org.codeaurora.qcamera3.exposure_metering", "exposure_metering_mode");
-
-      context->expmetering = g_value_get_enum (value);
-      meta.update(tag_id, &(context)->expmetering, 1);
-      break;
-    }
-    case PARAM_CAMERA_EXPOSURE_COMPENSATION:
-    {
-      gint compensation;
-      context->expcompensation = g_value_get_int (value);
-
-      compensation = context->expcompensation;
-      meta.update(ANDROID_CONTROL_AE_EXPOSURE_COMPENSATION, &compensation, 1);
       break;
     }
     case PARAM_CAMERA_EXPOSURE_TIME:
     {
       gint64 time;
-
       context->exptime = g_value_get_int64 (value);
-      time = context->exptime;
 
+      time = context->exptime;
       meta.update(ANDROID_SENSOR_EXPOSURE_TIME, &time, 1);
       break;
     }
@@ -1885,7 +1820,7 @@ gst_qmmf_context_set_camera_param (GstQmmfContext * context, guint param_id,
       gint mode = UCHAR_MAX;
 
       context->wbmode = g_value_get_enum (value);
-      mode = gst_qmmfsrc_white_balance_mode_android_value (context->wbmode);
+      mode = gst_qmmfsrc_wb_mode_android_value (context->wbmode);
 
       // If the returned value is not UCHAR_MAX then we have an Android enum.
       if (mode != UCHAR_MAX)
@@ -1954,12 +1889,12 @@ gst_qmmf_context_set_camera_param (GstQmmfContext * context, guint param_id,
       set_vendor_tags (context->mwbsettings, &meta);
       break;
     }
-    case PARAM_CAMERA_FOCUS_MODE:
+    case PARAM_CAMERA_AF_MODE:
     {
       guchar mode;
       context->afmode = g_value_get_enum (value);
 
-      mode = gst_qmmfsrc_focus_mode_android_value (context->afmode);
+      mode = gst_qmmfsrc_af_mode_android_value (context->afmode);
       meta.update(ANDROID_CONTROL_AF_MODE, &mode, 1);
       break;
     }
@@ -1988,6 +1923,15 @@ gst_qmmf_context_set_camera_param (GstQmmfContext * context, guint param_id,
       meta.update(tag_id, &(context)->isomode, 1);
       break;
     }
+    case PARAM_CAMERA_AE_METERING_MODE:
+    {
+      guint tag_id = get_vendor_tag_by_name (
+          "org.codeaurora.qcamera3.exposure_metering", "exposure_metering_mode");
+
+      context->expmetering = g_value_get_enum (value);
+      meta.update(tag_id, &(context)->expmetering, 1);
+      break;
+    }
     case PARAM_CAMERA_NOISE_REDUCTION:
     {
       guchar mode;
@@ -2009,13 +1953,13 @@ gst_qmmf_context_set_camera_param (GstQmmfContext * context, guint param_id,
         break;
       }
 
-      structure = GST_STRUCTURE (g_value_dup_boxed(&gvalue));
-      g_value_unset (&gvalue);
+      structure = GST_STRUCTURE(g_value_dup_boxed(&gvalue));
+      g_value_unset(&gvalue);
 
-      gst_structure_foreach (structure, update_structure, context->nrtuning);
-      gst_structure_free (structure);
+      gst_structure_foreach(structure, update_structure, context->nrtuning);
+      gst_structure_free(structure);
 
-      set_vendor_tags (context->nrtuning, &meta);
+      set_vendor_tags(context->nrtuning, &meta);
       break;
     }
     case PARAM_CAMERA_ZOOM:
@@ -2137,11 +2081,11 @@ gst_qmmf_context_set_camera_param (GstQmmfContext * context, guint param_id,
         break;
       }
 
-      structure = GST_STRUCTURE (g_value_dup_boxed(&gvalue));
-      g_value_unset (&gvalue);
+      structure = GST_STRUCTURE(g_value_dup_boxed(&gvalue));
+      g_value_unset(&gvalue);
 
-      gst_structure_foreach (structure, update_structure, context->ltmdata);
-      gst_structure_free (structure);
+      gst_structure_foreach(structure, update_structure, context->ltmdata);
+      gst_structure_free(structure);
 
       set_vendor_tags(context->ltmdata, &meta);
       break;
@@ -2199,17 +2143,14 @@ gst_qmmf_context_get_camera_param (GstQmmfContext * context, guint param_id,
     case PARAM_CAMERA_ANTIBANDING_MODE:
       g_value_set_enum (value, context->antibanding);
       break;
-    case PARAM_CAMERA_EXPOSURE_MODE:
-      g_value_set_enum (value, context->expmode);
+    case PARAM_CAMERA_AE_COMPENSATION:
+      g_value_set_int (value, context->aecompensation);
       break;
-    case PARAM_CAMERA_EXPOSURE_LOCK:
-      g_value_set_boolean (value, context->explock);
+    case PARAM_CAMERA_AE_MODE:
+      g_value_set_enum (value, context->aemode);
       break;
-    case PARAM_CAMERA_EXPOSURE_METERING:
-      g_value_set_enum (value, context->expmetering);
-      break;
-    case PARAM_CAMERA_EXPOSURE_COMPENSATION:
-      g_value_set_int (value, context->expcompensation);
+    case PARAM_CAMERA_AE_LOCK:
+      g_value_set_boolean (value, context->aelock);
       break;
     case PARAM_CAMERA_EXPOSURE_TIME:
       g_value_set_int64 (value, context->exptime);
@@ -2234,7 +2175,7 @@ gst_qmmf_context_get_camera_param (GstQmmfContext * context, guint param_id,
       g_free (string);
       break;
     }
-    case PARAM_CAMERA_FOCUS_MODE:
+    case PARAM_CAMERA_AF_MODE:
       g_value_set_enum (value, context->afmode);
       break;
     case PARAM_CAMERA_IR_MODE:
@@ -2242,6 +2183,9 @@ gst_qmmf_context_get_camera_param (GstQmmfContext * context, guint param_id,
       break;
     case PARAM_CAMERA_ISO_MODE:
       g_value_set_enum (value, context->isomode);
+      break;
+    case PARAM_CAMERA_AE_METERING_MODE:
+      g_value_set_enum (value, context->expmetering);
       break;
     case PARAM_CAMERA_NOISE_REDUCTION:
       g_value_set_enum (value, context->nrmode);
@@ -2335,11 +2279,6 @@ gst_qmmf_context_update_video_param (GstPad * pad, GParamSpec * pspec,
 
   GST_DEBUG ("Received update for %s property", pname);
 
-  if (context->state < GST_STATE_PAUSED) {
-    GST_DEBUG ("Stream not yet created, skip property update.");
-    return;
-  }
-
   g_value_init (&value, pspec->value_type);
   g_object_get_property (G_OBJECT (vpad), pname, &value);
 
@@ -2364,70 +2303,11 @@ gst_qmmf_context_update_video_param (GstPad * pad, GParamSpec * pspec,
     status = recorder->SetVideoTrackParam (session_id, track_id,
         ::qmmf::CodecParamType::kIDRIntervalType, &param, sizeof (param)
     );
-  } else if (g_strcmp0 (pname, "crop") == 0) {
-    ::android::CameraMetadata meta;
-    gint32 x = -1, y = -1, width = -1, height = -1;
-    guint tag_id = 0;
-
-    g_return_if_fail (gst_value_array_get_size (&value) == 4);
-
-    x = g_value_get_int (gst_value_array_get_value (&value, 0));
-    y = g_value_get_int (gst_value_array_get_value (&value, 1));
-    width = g_value_get_int (gst_value_array_get_value (&value, 2));
-    height = g_value_get_int (gst_value_array_get_value (&value, 3));
-
-    if (x < 0 || x > vpad->width) {
-      GST_WARNING ("Cannot apply crop, X axis value outside stream width!");
-      return;
-    } else if (y < 0 || y > vpad->height) {
-      GST_WARNING ("Cannot apply crop, Y axis value outside stream height!");
-      return;
-    } else if (width < 0 || width > (vpad->width - x)) {
-      GST_WARNING ("Cannot apply crop, width value outside stream width!");
-      return;
-    } else if (height < 0 || height > (vpad->height - y)) {
-      GST_WARNING ("Cannot apply crop, height value outside stream height!");
-      return;
-    } else if ((vpad->crop.w == 0 && vpad->crop.h != 0) ||
-        (vpad->crop.w != 0 && vpad->crop.h == 0)) {
-      GST_WARNING ("Cannot apply crop, width and height must either both be 0 "
-          "or both be positive values!");
-      return;
-    } else if ((vpad->crop.w == 0 && vpad->crop.h == 0) &&
-        (vpad->crop.x != 0 || vpad->crop.y != 0)) {
-      GST_WARNING ("Cannot apply crop, width and height values are 0 but "
-          "X and/or Y are not 0!");
-      return;
-    }
-
-    recorder->GetCameraParam (context->camera_id, meta);
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropX");
-    if (meta.update (tag_id, &x, 1) != 0)
-      GST_WARNING ("Failed to update X axis crop value");
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropY");
-    if (meta.update (tag_id, &y, 1) != 0)
-      GST_WARNING ("Failed to update Y axis crop value");
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropWidth");
-    if (meta.update (tag_id, &width, 1) != 0)
-      GST_WARNING ("Failed to update crop width");
-
-    tag_id = get_vendor_tag_by_name (
-        "org.codeaurora.qcamera3.c2dCropParam", "c2dCropHeight");
-    if (meta.update (tag_id, &height, 1) != 0)
-      GST_WARNING ("Failed to update crop height");
-
-    status = recorder->SetCameraParam (context->camera_id, meta);
   } else {
     GST_WARNING ("Unsupported parameter '%s'!", pname);
     status = -1;
   }
 
   QMMFSRC_RETURN_IF_FAIL (NULL, status == 0,
-      "QMMF Recorder SetVideoTrackParam/SetCameraParam Failed!");
+      "QMMF Recorder SetVideoTrackParam Failed!");
 }

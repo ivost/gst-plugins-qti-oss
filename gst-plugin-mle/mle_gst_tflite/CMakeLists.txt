@@ -21,7 +21,6 @@ target_link_libraries(${GST_MLE_TFLITE} PRIVATE
   ${GST_VIDEO_LIBRARIES}
   qtimlmeta
   Engine_MLE
-  gstqtivideobase
 )
 
 install(

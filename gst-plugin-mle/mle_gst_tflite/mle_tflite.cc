@@ -52,7 +52,7 @@ G_DEFINE_TYPE (GstMLETFLite, gst_mle_tflite, GST_TYPE_VIDEO_FILTER);
 #define DEFAULT_PROP_MLE_MEAN_VALUE 0.0
 #define DEFAULT_PROP_MLE_SIGMA_VALUE 0.0
 #define DEFAULT_TFLITE_NUM_THREADS 2
-#define DEFAULT_PROP_MLE_PREPROCESS_ACCEL 2 //gpu preprocessing
+#define DEFAULT_PROP_MLE_PREPROCESS_ACCEL 1 //cpu performance
 #define GST_MLE_UNUSED(var) ((void)var)
 
 enum {
@@ -587,7 +587,12 @@ static GstFlowReturn gst_mle_tflite_transform_frame_ip(GstVideoFilter *filter,
                                                        GstVideoFrame *frame)
 {
   GstMLETFLite *mle = GST_MLE_TFLITE (filter);
-  gint ret = mle->engine->Process(frame);
+
+  mle->source_frame.frame_data[0] = (uint8_t*) GST_VIDEO_FRAME_PLANE_DATA (frame, 0);
+  mle->source_frame.frame_data[1] = (uint8_t*) GST_VIDEO_FRAME_PLANE_DATA (frame, 1);
+  mle->source_frame.stride = GST_VIDEO_FRAME_PLANE_STRIDE(frame, 0);
+
+  gint ret = mle->engine->Process(&mle->source_frame, frame->buffer);
   if (ret) {
     GST_ERROR_OBJECT (mle, "MLE Process failed.");
     return GST_FLOW_ERROR;
@@ -705,9 +710,9 @@ gst_mle_tflite_class_init (GstMLETFLiteClass * klass)
       g_param_spec_uint(
           "preprocess-accel",
           "Preprocessing accelerator",
-          "Possible values: 0-cpu, 1-dsp, 2-gpu",
+          "Possible values: 0-low power, 1-cpu performance, 2-cpu offload, 3-performance",
           0,
-          2,
+          3,
           DEFAULT_PROP_MLE_PREPROCESS_ACCEL,
           static_cast<GParamFlags>(G_PARAM_READWRITE |
                                    G_PARAM_STATIC_STRINGS)));

@@ -33,7 +33,8 @@
 #include <mutex>
 
 #include <inttypes.h>
-#include "engines/common_utils.h"
+#include <utils/Log.h>
+
 #include "hexagon_nn.h"
 
 class NNDriver {
