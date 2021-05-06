@@ -1,0 +1,22 @@
+# GStreamer plugins pipeline test application.
+set(GST_PIPELINE_EXECUTABLE gst-pipeline-app)
+
+add_executable(${GST_PIPELINE_EXECUTABLE}
+  main.c
+)
+
+target_include_directories(${GST_PIPELINE_EXECUTABLE} PRIVATE
+  ${GST_INCLUDE_DIRS}
+)
+
+target_link_libraries(${GST_PIPELINE_EXECUTABLE} PRIVATE
+  ${GST_LIBRARIES}
+)
+
+install(
+  TARGETS ${GST_PIPELINE_EXECUTABLE}
+  RUNTIME DESTINATION ${GST_PLUGINS_QTI_OSS_INSTALL_BINDIR}
+  PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ
+              GROUP_EXECUTE GROUP_READ
+              GROUP_EXECUTE GROUP_READ
+)
