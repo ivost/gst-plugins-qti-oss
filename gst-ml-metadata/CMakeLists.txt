@@ -1,4 +1,8 @@
+
 cmake_minimum_required(VERSION 3.8.2)
+
+set(GST_PLUGINS_QTI_OSS_VERSION 1.0.0)
+
 project(GST_PLUGIN_QTI_OSS_OVERLAY
   VERSION ${GST_PLUGINS_QTI_OSS_VERSION}
   LANGUAGES C CXX
@@ -11,11 +15,21 @@ link_directories(${SYSROOT_LIBDIR})
 
 find_package(PkgConfig)
 
-# Get the pkgconfigs exported by the automake tools
-pkg_check_modules(GST
-  REQUIRED gstreamer-1.0>=${GST_VERSION_REQUIRED})
-pkg_check_modules(GST_ALLOC
-  REQUIRED gstreamer-allocators-1.0>=${GST_VERSION_REQUIRED})
+## Get the pkgconfigs exported by the automake tools
+#pkg_check_modules(GST  REQUIRED gstreamer-1.0>=${GST_VERSION_REQUIRED})
+#pkg_check_modules(GST_ALLOC REQUIRED gstreamer-allocators-1.0>=${GST_VERSION_REQUIRED})
+
+pkg_search_module(GLIB REQUIRED glib-2.0)
+include_directories(${GLIB_INCLUDE_DIRS})
+link_directories(${GLIB_LIBRARY_DIRS})
+
+pkg_search_module(GST REQUIRED gstreamer-1.0)
+include_directories(${GST_INCLUDE_DIRS})
+link_directories(${GST_LIBRARY_DIRS})
+
+pkg_search_module(GST_ALLOC REQUIRED gstreamer-allocators-1.0)
+include_directories(${GST_ALLOC_INCLUDE_DIRS})
+link_directories(${GST_ALLOC_LIBRARY_DIRS})
 
 # Common compiler flags.
 set(CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Werror")
@@ -25,6 +39,7 @@ set(GST_QTI_ML_META qtimlmeta)
 
 add_library(${GST_QTI_ML_META} SHARED
   ml_meta.c
+  gst_objects_info_meta.c
 )
 
 target_include_directories(${GST_QTI_ML_META} PUBLIC
@@ -42,5 +57,6 @@ target_link_libraries(${GST_QTI_ML_META} PRIVATE
 
 install(TARGETS ${GST_QTI_ML_META} DESTINATION lib OPTIONAL)
 
-FILE(GLOB INCLUDE_FILES "ml_meta.h")
+FILE(GLOB INCLUDE_FILES "*_meta.h")
+
 INSTALL(FILES ${INCLUDE_FILES} DESTINATION include/ml-meta)
