@@ -9,7 +9,7 @@ gi.require_version('Gst', '1.0')
 gi.require_version('GstVideo', '1.0')
 from gi.repository import Gst, GstVideo  # noqa:F401,F402
 
-from .gst_hacks import map_gst_buffer  # noqa:F401,F402
+from gst_hacks import map_gst_buffer  # noqa:F401,F402
 
 
 BITS_PER_BYTE = 8
@@ -155,3 +155,7 @@ def to_gst_string(plugins: typ.List[str]) -> str:
 
     # <!> between plugins (except tee)
     return plugins_[0] + "".join(["{} {}".format('' if pl[-1] == '.' else ' !', pl) for pl in plugins_[1:]])
+
+if __name__ == "__main__":
+    x = fraction_to_str(1/3)
+    print(x)

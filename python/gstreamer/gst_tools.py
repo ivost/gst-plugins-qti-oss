@@ -32,13 +32,12 @@ import attr
 import numpy as np
 
 import gi
-
 gi.require_version("Gst", "1.0")
 gi.require_version("GstApp", "1.0")
 gi.require_version("GstVideo", "1.0")
 from gi.repository import Gst, GLib, GObject, GstApp, GstVideo  # noqa:F401,F402
 
-from .utils import *  # noqa:F401,F402
+from utils import *  # noqa:F401,F402
 
 Gst.init(sys.argv if hasattr(sys, "argv") else None)
 

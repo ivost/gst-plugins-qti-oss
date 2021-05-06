@@ -25,7 +25,10 @@ class _GstMapInfo(Structure):
 
 _GST_MAP_INFO_POINTER = POINTER(_GstMapInfo)
 
-_libgst = CDLL(os.getenv("LIB_GSTREAMER_PATH", "libgstreamer-1.0.so.0"))
+path = os.getenv("LIB_GSTREAMER_PATH", "libgstreamer-1.0.so.0")
+print("LIB_GSTREAMER_PATH:", path)
+
+_libgst = CDLL(path)
 _libgst.gst_buffer_map.argtypes = [c_void_p, _GST_MAP_INFO_POINTER, c_int]
 _libgst.gst_buffer_map.restype = c_int
 
@@ -96,3 +99,6 @@ def map_gst_memory(memory: Gst.Memory, flags: Gst.MapFlags) -> _GST_MAP_INFO_POI
             mapping.data, POINTER(c_byte * mapping.size)).contents
     finally:
         _libgst.gst_memory_unmap(ptr, mapping)
+
+if __name__ == "__main__":
+    x = _GstMapInfo()

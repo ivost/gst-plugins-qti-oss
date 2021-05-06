@@ -10,14 +10,21 @@ from fractions import Fraction
 
 import numpy as np
 
-#import pytest
 
-from gstreamer import GstVideo, Gst
-import gstreamer as gst
-import gstreamer.utils as utils
+import gi
+gi.require_version("Gst", "1.0")
+gi.require_version("GstApp", "1.0")
+gi.require_version("GstVideo", "1.0")
+from gi.repository import Gst, GLib, GObject, GstApp, GstVideo  # noqa:F401,F402
+
+from gst_tools import GstVideoSink, GstVideoSource, GstPipeline, GstContext  # noqa:F401,F402
+
+# from gstreamer import GstVideo, Gst
+# import gstreamer as gst
+# import gstreamer.utils as utils
 
 
-VERSION = "0.5.6.1"
+VERSION = "0.5.6.2"
 
 NUM_BUFFERS = 10
 WIDTH, HEIGHT = 1920, 1080
@@ -42,7 +49,7 @@ FRAMES = [
         0, 1, (HEIGHT, WIDTH)).astype(np.float32))
 ]
 
-    
+   
 # https://gstreamer.freedesktop.org/documentation/app/appsrc.html?gi-language=c
 # https://gstreamer.freedesktop.org/documentation/app/appsrc.html?gi-language=python
 
@@ -50,10 +57,11 @@ def test_video_sink():
     num_buffers = NUM_BUFFERS
 
     command = "appsrc emit-signals=True is-live=True ! videoconvert ! fakesink sync=false"
-
+    print(command)
     for frame in FRAMES:
         h, w = frame.buffer.shape[:2]
-        with gst.GstContext(), gst.GstVideoSink(command, width=w, height=h, video_frmt=frame.buffer_format) as pipeline:
+        # print("h:", h, " w:", w)
+        with GstContext(), GstVideoSink(command, width=w, height=h, video_frmt=frame.buffer_format) as pipeline:
             assert pipeline.total_buffers_count == 0
 
             # wait pipeline to initialize
@@ -69,29 +77,33 @@ def test_video_sink():
 
             assert pipeline.total_buffers_count == num_buffers
 
+    print("test_video_sink pass")
+    pass
 
-# def test_video_source():
-#     num_buffers = NUM_BUFFERS
-#     width, height = WIDTH, HEIGHT
+def test_video_source():
+    num_buffers = NUM_BUFFERS
+    width, height = WIDTH, HEIGHT
 
-#     formats = [GstVideo.VideoFormat.to_string(f.buffer_format) for f in FRAMES]
+    formats = [GstVideo.VideoFormat.to_string(f.buffer_format) for f in FRAMES]
 
-#     for fmt in formats:
-#         caps_filter = 'capsfilter caps=video/x-raw,format={},width={},height={}'.format(
-#             fmt, width, height)
-#         command = 'videotestsrc num-buffers={} ! {} ! appsink emit-signals=True sync=false'.format(
-#             num_buffers, caps_filter)
-#         with gst.GstContext(), gst.GstVideoSource(command) as pipeline:
+    for fmt in formats:
+        caps_filter = 'capsfilter caps=video/x-raw,format={},width={},height={}'.format(
+            fmt, width, height)
+        command = 'videotestsrc num-buffers={} ! {} ! appsink emit-signals=True sync=false'.format(
+            num_buffers, caps_filter)
+        with GstContext(), GstVideoSource(command) as pipeline:
 
-#             num_read = 0
-#             while num_read < num_buffers:
-#                 buffer = pipeline.pop()
-#                 if buffer:
-#                     num_read += 1
-#                     h, w = buffer.data.shape[:2]
-#                     assert h == height and w == width
+            num_read = 0
+            while num_read < num_buffers:
+                buffer = pipeline.pop()
+                if buffer:
+                    num_read += 1
+                    h, w = buffer.data.shape[:2]
+                    assert h == height and w == width
 
-#             assert pipeline.total_buffers_count == num_buffers
+            assert pipeline.total_buffers_count == num_buffers
+    print("test_video_source pass")
+    pass
 
 
 # def test_gst_pipeline():
@@ -212,3 +224,4 @@ if __name__ == "__main__":
     log.basicConfig(format='%(process)d-%(levelname)s-%(message)s')
     log.debug("python gstreamer test " + VERSION)
     test_video_sink()
+    test_video_source()
