@@ -57,7 +57,8 @@ def test_video_sink():
     num_buffers = NUM_BUFFERS
 
     command = "appsrc emit-signals=True is-live=True ! videoconvert ! fakesink sync=false"
-    print(command)
+    print("pipeline: " + command)
+
     for frame in FRAMES:
         h, w = frame.buffer.shape[:2]
         # print("h:", h, " w:", w)
@@ -106,10 +107,13 @@ def test_video_source():
     pass
 
 
-# def test_gst_pipeline():
-#     command = "videotestsrc num-buffers=100 ! fakesink sync=false"
-#     with gst.GstContext(), gst.GstPipeline(command) as pipeline:
-#         assert isinstance(pipeline, gst.GstPipeline)
+def test_gst_pipeline():
+    command = "videotestsrc num-buffers=100 ! fakesink sync=false"
+    print("pipeline: " + command)
+    with GstContext(), GstPipeline(command) as pipeline:
+        assert isinstance(pipeline, GstPipeline)
+    print("test_gst_pipeline pass")
+    pass
 
 
 # @pytest.mark.skip
@@ -225,3 +229,4 @@ if __name__ == "__main__":
     log.debug("python gstreamer test " + VERSION)
     test_video_sink()
     test_video_source()
+    test_gst_pipeline()
