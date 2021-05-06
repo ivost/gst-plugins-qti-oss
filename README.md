@@ -163,3 +163,6 @@ pkg-config --cflags --libs gstreamer-plugins-base-1.0
 pkg-config --cflags --libs gstreamer-allocators-1.0
 
 -pthread -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -lgstallocators-1.0 -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0
+
+https://archlinux.org/packages/extra/x86_64/gst-plugins-base-libs/files/
+
