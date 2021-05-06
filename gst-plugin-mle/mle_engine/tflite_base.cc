@@ -186,6 +186,9 @@ int32_t TFLBase::LoadModel(std::string& model_path) {
 }
 
 int32_t TFLBase::InitFramework() {
+  
+  GST_WARNING("TFLBase::InitFramework EXPERIMENTAL v.0.5.6.1");
+
   MLE_LOGI("%s Enter", __func__);
   MLE_LOGI("TFLite version: %s", TF_VERSION_STRING);
   int32_t res = MLE_OK;
@@ -398,7 +401,11 @@ int32_t TFLBase::PostProcessMultiOutput(GstBuffer* buffer) {
   float *num_boxes = tflite_params_.interpreter->typed_output_tensor<float>(3);
 
   float num_box = num_boxes[0];
+
   MLE_LOGI("%s: Found %f boxes", __func__, num_box);
+
+  GST_WARNING("===== %s: Found %f boxes", __func__, num_box);
+
   for (int i = 0; i < num_box; i++) {
     if (detected_scores[i] < config_.conf_threshold) continue;
 
