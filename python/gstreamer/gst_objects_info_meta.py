@@ -27,7 +27,7 @@ GstObjectInfoArrayPtr = POINTER(GstObjectInfoArray)
 cwd = os.path.dirname(os.path.abspath(__file__))
 print("cwd: " + cwd)
 
-path = os.getenv("LIB_INFO_META_PATH", "/lib/libgst_objects_info_meta.so")
+path = os.getenv("LIB_INFO_META_PATH", "/usr/lib/libqtimlmeta.so")
 print("LIB_INFO_META_PATH: " + path)
 libc = CDLL(path)
 print("open OK")
