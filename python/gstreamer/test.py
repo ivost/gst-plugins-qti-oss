@@ -1,3 +1,5 @@
+from utils import ndarray_to_gst_buffer
+from gst_objects_info_meta import gst_meta_write, gst_meta_get, gst_meta_remove
 import os
 import time
 import math
@@ -22,7 +24,6 @@ from gst_tools import GstVideoSink, GstVideoSource, GstPipeline, GstContext  # n
 # from gstreamer import GstVideo, Gst
 # import gstreamer as gst
 # import gstreamer.utils as utils
-from utils import ndarray_to_gst_buffer
 
 
 VERSION = "0.5.6.2"
@@ -50,7 +51,7 @@ FRAMES = [
         0, 1, (HEIGHT, WIDTH)).astype(np.float32))
 ]
 
-   
+
 # https://gstreamer.freedesktop.org/documentation/app/appsrc.html?gi-language=c
 # https://gstreamer.freedesktop.org/documentation/app/appsrc.html?gi-language=python
 
@@ -81,6 +82,7 @@ def test_video_sink():
 
     print("test_video_sink pass")
     pass
+
 
 def test_video_source():
     num_buffers = NUM_BUFFERS
@@ -117,15 +119,11 @@ def test_gst_pipeline():
     pass
 
 
-
 def test_metadata():
     np_buffer = np.random.randint(
         low=0, high=255, size=(HEIGHT, WIDTH, 3), dtype=np.uint8)
 
-    
     gst_buffer = ndarray_to_gst_buffer(np_buffer)
-
-    from gst_objects_info_meta import gst_meta_write, gst_meta_get, gst_meta_remove
 
     objects = [
         {'class_name': "person", 'bounding_box': [
@@ -187,6 +185,9 @@ def test_metadata():
     # assert utils.get_num_channels(GstVideo.VideoFormat.GRAY8) == 1
     # assert utils.get_num_channels(GstVideo.VideoFormat.I420) == -1
 
+def real_test():
+    pass
+
 
 if __name__ == "__main__":
     print("python gstreamer test ", VERSION)
@@ -196,3 +197,5 @@ if __name__ == "__main__":
     test_video_source()
     test_gst_pipeline()
     test_metadata()
+    real_test()
+    exit(0)
