@@ -36,6 +36,7 @@ set(GST_QTI_OVERLAY qtioverlay)
 
 add_library(${GST_QTI_OVERLAY} SHARED
   gstoverlay.cc
+  tracker.cc
 )
 
 target_include_directories(${GST_QTI_OVERLAY} PUBLIC

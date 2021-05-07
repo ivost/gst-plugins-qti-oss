@@ -36,6 +36,7 @@
 #include <ml-meta/ml_meta.h>
 
 #include "gstoverlay.h"
+#include "tracker.h"
 
 #define GST_CAT_DEFAULT overlay_debug
 GST_DEBUG_CATEGORY_STATIC (overlay_debug);
@@ -241,6 +242,11 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
   gboolean res = TRUE;
 
   guint meta_num = g_slist_length (meta_list);
+
+  int rc = trk_analyze(meta_num);
+
+  GST_WARNING("analyze result: %d", rc);
+
   if (meta_num) {
     for (uint32_t i = g_sequence_get_length (ov_id);
         i < meta_num; i++) {
@@ -311,6 +317,8 @@ gst_overlay_apply_bbox_item (GstOverlay * gst_overlay, GstVideoRectangle * bbox,
   ov_param.dst_rect.start_y = bbox->y;
   ov_param.dst_rect.width = bbox->w;
   ov_param.dst_rect.height = bbox->h;
+
+  //GST_WARNING("=== label %s, x %d, y %d, w %d, h %d", label, bbox->x, bbox->y, bbox->w, bbox->h);
 
   if (sizeof (ov_param.bounding_box.box_name) <= strlen (label)) {
     GST_ERROR_OBJECT (gst_overlay, "Text size exceeded %d <= %d",

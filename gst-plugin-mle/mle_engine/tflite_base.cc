@@ -404,7 +404,7 @@ int32_t TFLBase::PostProcessMultiOutput(GstBuffer* buffer) {
 
   MLE_LOGI("%s: Found %f boxes", __func__, num_box);
 
-  GST_WARNING("===== %s: Found %f boxes", __func__, num_box);
+  // GST_WARNING("===== %s: Found %f boxes", __func__, num_box);
 
   for (int i = 0; i < num_box; i++) {
     if (detected_scores[i] < config_.conf_threshold) continue;
