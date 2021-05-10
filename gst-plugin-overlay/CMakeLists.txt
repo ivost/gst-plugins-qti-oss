@@ -37,7 +37,7 @@ set(GST_QTI_OVERLAY qtioverlay)
 add_library(${GST_QTI_OVERLAY} SHARED
   gstoverlay.cc
   tracker.cc
-)
+        ../gst-ml-metadata/azc.h)
 
 target_include_directories(${GST_QTI_OVERLAY} PUBLIC
   ${GST_INCLUDE_DIRS}
