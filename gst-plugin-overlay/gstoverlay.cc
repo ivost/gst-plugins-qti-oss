@@ -243,9 +243,8 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
 
   guint meta_num = g_slist_length (meta_list);
 
-  int rc = trk_analyze(meta_num);
-
-  GST_WARNING("analyze result: %d", rc);
+//  int rc = trk_analyze(meta_num);
+//  GST_WARNING("analyze result: %d", rc);
 
   if (meta_num) {
     for (uint32_t i = g_sequence_get_length (ov_id);
@@ -1129,11 +1128,15 @@ gst_overlay_apply_overlay (GstOverlay *gst_overlay, GstVideoFrame *frame)
   overlay_buf.frame_len = gst_buffer_get_size (frame->buffer);
   overlay_buf.format    = gst_overlay->format;
 
+#ifndef HACK
+  GST_WARN("APPLY_OVERLAY");
   ret = gst_overlay->overlay->ApplyOverlay (overlay_buf);
   if (ret != 0) {
     GST_ERROR_OBJECT (gst_overlay, "Overlay apply failed!");
     return FALSE;
   }
+#endif
+
   return TRUE;
 }
 
@@ -1860,7 +1863,7 @@ gst_overlay_simg_overlay_to_string (gpointer data, gpointer user_data)
  * @data: user text overlay entry of GstOverlayUsrBBox type
  * @user_data: output string of GstOverlayString type
  *
- * Converts text overlay configuration to string.
+ * Converts bbox  to string.
  */
 static void
 gst_overlay_bbox_overlay_to_string (gpointer data, gpointer user_data)
@@ -2352,7 +2355,9 @@ gst_overlay_transform_frame_ip (GstVideoFilter *filter, GstVideoFrame *frame)
       !g_sequence_is_empty (gst_overlay->usr_simg) ||
       !g_sequence_is_empty (gst_overlay->usr_bbox) ||
       !g_sequence_is_empty (gst_overlay->usr_mask)) {
+
     res = gst_overlay_apply_overlay (gst_overlay, frame);
+
     if (!res) {
       GST_ERROR_OBJECT (gst_overlay, "Overlay apply failed!");
       return GST_FLOW_ERROR;
