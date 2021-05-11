@@ -166,6 +166,9 @@ gst_overlay_caps (void)
   static volatile gsize inited = 0;
   if (g_once_init_enter (&inited)) {
     caps = gst_static_caps_get (&gst_overlay_format_caps);
+
+    int rc = trk_init();
+
     g_once_init_leave (&inited, 1);
   }
   return caps;
@@ -208,6 +211,8 @@ gst_overlay_destroy_overlay_item (gpointer data, gpointer user_data)
   uint32_t *item_id = (uint32_t *) data;
   Overlay *overlay = (Overlay *) user_data;
 
+  GST_WARNING("gst_overlay_destroy_overlay_item");
+
   int32_t ret = overlay->DisableOverlayItem (*item_id);
   if (ret != 0) {
     GST_ERROR ("Overlay %d disable failed!", *item_id);
@@ -243,8 +248,8 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
 
   guint meta_num = g_slist_length (meta_list);
 
-//  int rc = trk_analyze(meta_num);
-//  GST_WARNING("analyze result: %d", rc);
+  int rc = trk_analyze(meta_num);
+  GST_WARNING("analyze result: %d", rc);
 
   if (meta_num) {
     for (uint32_t i = g_sequence_get_length (ov_id);

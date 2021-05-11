@@ -39,16 +39,6 @@ target_link_libraries(${GST_QTI_ML_META} PRIVATE
         ${GST_LIBRARIES}
         ${GST_ALLOC_LIBRARIES}
         ${GST_VIDEO_LIBRARIES}
-        iothub_client_mqtt_transport
-        iothub_client
-        umqtt
-        aziotsharedutil
-        parson
-        crypto
-        ssl
-        curl
-        pthread
-        m
         )
 
 install(TARGETS ${GST_QTI_ML_META} DESTINATION lib OPTIONAL)
