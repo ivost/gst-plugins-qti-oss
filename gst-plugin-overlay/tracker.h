@@ -4,6 +4,20 @@
 #include <gmodule.h>
 #include <gst/gst.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int azc_init();
+
+int azc_send();
+
+int azc_reset();
+
+#ifdef __cplusplus
+}
+#endif
+
 #define HACK 1
 
 int trk_init();
