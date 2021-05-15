@@ -245,12 +245,15 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
     GSList * meta_list, GstOverlayMetaApplyFunc apply_func, GSequence * ov_id)
 {
   gboolean res = TRUE;
-
   guint meta_num = g_slist_length (meta_list);
+  if (meta_num == 0) {
+      return res;
+  }
 
-  int rc = trk_analyze(meta_num);
+#if defined HACK
+  int rc = trk_analyze(meta_list);
   //GST_WARNING("analyze result: %d", rc);
-
+#else
   if (meta_num) {
     for (uint32_t i = g_sequence_get_length (ov_id);
         i < meta_num; i++) {
@@ -276,6 +279,7 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
         g_sequence_get_iter_at_pos (ov_id, meta_num),
         g_sequence_get_end_iter (ov_id));
   }
+#endif
 
   return TRUE;
 }

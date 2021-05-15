@@ -16,7 +16,7 @@ extern "C" {
 
 int trk_init();
 
-int trk_analyze(int num);
+int trk_analyze(GSList * meta_list);
 
 int trk_reset();
 
