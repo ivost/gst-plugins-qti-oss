@@ -37,6 +37,7 @@ set(GST_QTI_OVERLAY qtioverlay)
 add_library(${GST_QTI_OVERLAY} SHARED
   gstoverlay.cc
   tracker.cc
+  msg.c
   )
 
 target_include_directories(${GST_QTI_OVERLAY} PUBLIC
@@ -52,7 +53,7 @@ target_link_libraries(${GST_QTI_OVERLAY} PRIVATE
   ${GST_LIBRARIES}
   ${GST_ALLOC_LIBRARIES}
   ${GST_VIDEO_LIBRARIES}
-  azc
+  rt m
 )
 
 install(

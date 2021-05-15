@@ -249,7 +249,7 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
   guint meta_num = g_slist_length (meta_list);
 
   int rc = trk_analyze(meta_num);
-  GST_WARNING("analyze result: %d", rc);
+  //GST_WARNING("analyze result: %d", rc);
 
   if (meta_num) {
     for (uint32_t i = g_sequence_get_length (ov_id);

@@ -8,12 +8,6 @@
 extern "C" {
 #endif
 
-int azc_init();
-
-int azc_send();
-
-int azc_reset();
-
 #ifdef __cplusplus
 }
 #endif
