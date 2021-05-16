@@ -1,23 +1,17 @@
-#ifndef __GST_INSG_TRACKER_H__
-#define __GST_INSG_TRACKER_H__
+#pragma once
 
 #include <gmodule.h>
 #include <gst/gst.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef __cplusplus
-}
-#endif
-
 #define HACK 1
 
-int trk_init();
+// dealing with COCO categories only for now < 100 classes
+#define MAX_CAT 100
 
-int trk_analyze(GSList * meta_list);
+class Tracker {
+public:
+    Tracker();
+    ~Tracker();
+    int Track(GSList * meta_list);
+};
 
-int trk_reset();
-
-#endif // __GST_INSG_TRACKER_H__

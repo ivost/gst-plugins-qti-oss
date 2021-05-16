@@ -34,9 +34,7 @@ struct bbox {
     uint16_t res0;
     float    conf;
 };
-
 //const int bbox_size = sizeof(struct bbox);
-
 typedef struct bbox BB;
 
 // object detection result
@@ -51,20 +49,24 @@ struct objdet_result {
 
 const int result_prefix_len = 16;
 
-int trk_init() {
-    GST_WARNING("trk_init enter, v.1.5.15.0");
-    GST_WARNING("bbox_size %lu, sizeof objdet_result %lu",sizeof(struct bbox), sizeof(objdet_result));
-    return msg_init();
+Tracker::Tracker() {
+    GST_WARNING("Tracker(), v.1.5.16.0");
+    msg_init();
 }
 
-int trk_analyze(GSList * meta_list) {
+Tracker::~Tracker() {
+    GST_WARNING("~Tracker()");
+    msg_reset();
+}
+
+int Tracker::Track(GSList * meta_list) {
     guint meta_num = g_slist_length (meta_list);
     int  obj_count = 0;
     GstMLDetectionMeta * meta;
     GstMLClassificationResult * meta_info;
     struct objdet_result res;
 
-    GST_WARNING("trk_analyze, num %u", meta_num);
+    GST_WARNING("Track enter, num %u", meta_num);
 
     for (gint x = 0; x < meta_num; x++) {
         //gpointer metadata = g_slist_nth_data (meta_list, x);
@@ -115,7 +117,3 @@ int trk_analyze(GSList * meta_list) {
     return rc;
 }
 
-int trk_reset() {
-    GST_WARNING("trk_reset enter");
-    return msg_reset();
-}

@@ -38,6 +38,7 @@
 #include "gstoverlay.h"
 #include "tracker.h"
 
+
 #define GST_CAT_DEFAULT overlay_debug
 GST_DEBUG_CATEGORY_STATIC (overlay_debug);
 
@@ -154,6 +155,10 @@ typedef gboolean (* GstOverlaySetFunc)
  */
 typedef void (* GstOverlayGetFunc) (gpointer data, gpointer user_data);
 
+#if defined HACK
+static Tracker tracker;
+#endif
+
 /**
  * gst_overlay_caps:
  *
@@ -166,8 +171,6 @@ gst_overlay_caps (void)
   static volatile gsize inited = 0;
   if (g_once_init_enter (&inited)) {
     caps = gst_static_caps_get (&gst_overlay_format_caps);
-
-    int rc = trk_init();
 
     g_once_init_leave (&inited, 1);
   }
@@ -251,8 +254,7 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
   }
 
 #if defined HACK
-  int rc = trk_analyze(meta_list);
-  //GST_WARNING("analyze result: %d", rc);
+    tracker.Track(meta_list);
 #else
   if (meta_num) {
     for (uint32_t i = g_sequence_get_length (ov_id);
