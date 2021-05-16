@@ -1,9 +1,6 @@
 #ifndef __GST_INSG_mq_H__
 #define __GST_INSG_mq_H__
 
-#define QUEUE_NAME "/Qazc"
-#define MAX_MSG (8000)
-
 #ifdef __cplusplus
 extern "C" {
 #endif

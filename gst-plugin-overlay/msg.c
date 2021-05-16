@@ -3,6 +3,9 @@
 #include "msg.h"
 #include <mqueue.h>
 
+#define QUEUE_NAME "/Qazc"
+#define MAX_MSG (2048)
+
 static mqd_t mq = -1;
 static char msg[MAX_MSG];
 
@@ -30,7 +33,7 @@ int msg_send(char *buffer, int size) {
         return -3;
     }
     memcpy(msg, buffer, size);
-    return mq_send(mq, msg, MAX_MSG, 0);
+    return mq_send(mq, msg, size, 0);
 }
 
 int msg_reset() {
