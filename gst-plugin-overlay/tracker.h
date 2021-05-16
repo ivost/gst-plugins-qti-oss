@@ -2,6 +2,7 @@
 
 #include <gmodule.h>
 #include <gst/gst.h>
+#include <map>
 
 #define HACK 1
 
@@ -13,5 +14,18 @@ public:
     Tracker();
     ~Tracker();
     int Track(GSList * meta_list);
+private:
+    int rc;
+    int cat;
+    int delta;
+    int x, y, w, h;
+    // which categories to track?
+    std::map<int, int> tracked;
+    // count per category
+    std::map<int, int> counts;
+    // count per category
+    std::map<int, int> prev_counts;
+    GstMLDetectionMeta * meta;
+    GstMLClassificationResult * meta_info;
 };
 
