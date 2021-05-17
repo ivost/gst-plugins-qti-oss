@@ -6,10 +6,26 @@
 #include "tracker.h"
 #include "msg.h"
 
-#define MAX_FIELDS (100)
+//#define MAX_FIELDS (100)
 #define MAX_BB (100)
 
 using namespace std;
+
+const int result_prefix_len = 16;
+const int PERSON = 1;
+const int CAR = 3;
+const int MAX_FIELDS = 100;
+const int MIN_TIME_DELTA = 2;
+
+// 192.168.1.129
+//width 1920, height 1056
+//scale_ratio_x 1.000000, scale_ratio_y 1.829268
+//x_offset 0, y_offset 0
+
+// 192.168.1.132
+//width 2048, height 1536
+//scale_ratio_x 1.000000, scale_ratio_y 1.339286
+//x_offset 0, y_offset 0
 
 // context
 struct cam_context {
@@ -49,12 +65,11 @@ struct objdet_result {
     BB       bb[MAX_BB];
 };
 
-const int result_prefix_len = 16;
-
 Tracker::Tracker() {
-    GST_WARNING("Tracker(), v.1.5.16.1");
-    tracked[1] = 1;
-    tracked[3] = 1;
+    GST_WARNING("Tracker(), v.1.5.16.2");
+    tracked[PERSON] = 1;
+    tracked[CAR] = 1;
+    last_check = 0;
     msg_init();
 }
 
@@ -72,8 +87,12 @@ int Tracker::Track(GSList * meta_list) {
     if (count == 0) {
         return 0;
     }
-    //GST_WARNING("Track enter, count %d", count);
-    prev_counts = counts;
+    long now = time(NULL);
+    long time_delta = now - last_check;
+    if (time_delta < MIN_TIME_DELTA) {
+        return 0;
+    }
+    //GST_WARNING("Track enter, count %d, time_delta %ld", count, time_delta);
     counts.clear();
     int idx = 0;
     for (int i = 0; i < count; i++) {
@@ -84,7 +103,7 @@ int Tracker::Track(GSList * meta_list) {
         cat = 0;
         //GST_WARNING("idx %d, name %s, conf %.2f", i, meta_info->name, meta_info->confidence);
         sscanf(meta_info->name, "%d ", &cat);
-        if (cat == 0) {
+        if (cat == 0 || cat > 80) {
             continue;
         }
         //GST_WARNING("idx %d, cat %d, tracked %d", idx, cat, this->tracked[cat]);
@@ -107,30 +126,32 @@ int Tracker::Track(GSList * meta_list) {
     }
     //GST_WARNING("obj_count %d", obj_count);
     if (obj_count == 0) {
+        last_check = now;
         return 0;
     }
 
+    //GST_WARNING("prev people: %d, cars: %d, map size: %d", prev_counts[PERSON], prev_counts[CAR], counts.size());
     delta = 0;
     for (auto it = counts.cbegin(); it != counts.cend(); ++it) {
         cat = (*it).first;
         count = (*it).second;
-        if (count > prev_counts[cat]) {
+        if (count > 0 && count > prev_counts[cat]) {
             delta += count - prev_counts[cat];
         }
     }
-    if (delta == 0) {
+    last_check = now;
+    if (delta <= 0) {
         return 0;
     }
-
+    prev_counts = counts;
+    GST_WARNING("delta: %d, people: %d, cars: %d", delta, counts[PERSON], counts[CAR]);
     res.numbb = obj_count;
-    res.time = time(NULL);
+    res.time = now;
     res.ctx_id = 1;
-
     int size = result_prefix_len + obj_count * sizeof(BB);
     // send to azc over posix msg queue
     rc = msg_send((char *) &res, size);
-    GST_WARNING("numbb %d, buflen %d, rc after msg_send %d", res.numbb, size, rc);
-
+    //GST_WARNING("numbb %d, buflen %d, rc after msg_send %d", res.numbb, size, rc);
     return rc;
 }
 

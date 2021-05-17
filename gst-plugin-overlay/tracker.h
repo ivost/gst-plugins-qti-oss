@@ -15,6 +15,7 @@ public:
     ~Tracker();
     int Track(GSList * meta_list);
 private:
+    long last_check;
     int rc;
     int cat;
     int delta;

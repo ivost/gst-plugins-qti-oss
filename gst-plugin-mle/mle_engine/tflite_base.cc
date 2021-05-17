@@ -187,7 +187,7 @@ int32_t TFLBase::LoadModel(std::string& model_path) {
 
 int32_t TFLBase::InitFramework() {
   
-  GST_WARNING("TFLBase::InitFramework EXPERIMENTAL v.0.5.6.1");
+  GST_WARNING("TFLBase::InitFramework EXPERIMENTAL v.0.5.16.1");
 
   MLE_LOGI("%s Enter", __func__);
   MLE_LOGI("TFLite version: %s", TF_VERSION_STRING);
@@ -412,8 +412,12 @@ int32_t TFLBase::PostProcessMultiOutput(GstBuffer* buffer) {
     uint32_t width = source_params_.width;
     uint32_t height = source_params_.height;
 
+    //GST_WARNING("width %d, height %d", width, height);
+
     float scale_ratio_x = (float)engine_input_params_.width / scale_width_;
     float scale_ratio_y = (float)engine_input_params_.height / scale_height_;
+
+    //GST_WARNING("scale_ratio_x %f, scale_ratio_y %f", scale_ratio_x, scale_ratio_y);
 
     if (config_.preprocess_mode == PreprocessingMode::kKeepARCrop) {
       width = po_.width;
@@ -439,6 +443,8 @@ int32_t TFLBase::PostProcessMultiOutput(GstBuffer* buffer) {
         labels_[detected_classes[i] + 1].c_str());
     box_info->confidence = detected_scores[i];
     meta->box_info = g_slist_append (meta->box_info, box_info);
+
+    //GST_WARNING("x_offset %d, y_offset %d", po_.x_offset, po_.y_offset);
 
     meta->bounding_box.x = static_cast<uint32_t>(
         detected_boxes[i * 4 + 1] * width * scale_ratio_x) + po_.x_offset;
