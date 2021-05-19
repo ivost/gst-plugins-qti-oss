@@ -66,7 +66,7 @@ struct objdet_result {
 };
 
 Tracker::Tracker() {
-    GST_WARNING("Tracker(), v.1.5.16.2");
+    GST_WARNING("Tracker(), v.1.5.18.1");
     tracked[PERSON] = 1;
     tracked[CAR] = 1;
     last_check = 0;
@@ -78,7 +78,7 @@ Tracker::~Tracker() {
     msg_reset();
 }
 
-int Tracker::Track(GSList * meta_list) {
+int Tracker::Track(GSList * meta_list, int context_id) {
     struct objdet_result res;
 
     int count = (int) g_slist_length (meta_list);
@@ -92,7 +92,7 @@ int Tracker::Track(GSList * meta_list) {
     if (time_delta < MIN_TIME_DELTA) {
         return 0;
     }
-    //GST_WARNING("Track enter, count %d, time_delta %ld", count, time_delta);
+    GST_DEBUG("Track enter, count %d, time_delta %ld, context_id %d", count, time_delta, context_id);
     counts.clear();
     int idx = 0;
     for (int i = 0; i < count; i++) {
@@ -108,6 +108,7 @@ int Tracker::Track(GSList * meta_list) {
         }
         //GST_WARNING("idx %d, cat %d, tracked %d", idx, cat, this->tracked[cat]);
         if (this->tracked[cat] == 0) {
+            GST_DEBUG("cat not tracked %d", cat);
             continue;
         }
         obj_count++;
@@ -124,34 +125,35 @@ int Tracker::Track(GSList * meta_list) {
         //GST_WARNING("idx %d, conf %f, x %d, y %d, w %d, h %d", idx, res.bb[idx].conf, x, y, w, h);
         idx++;
     }
-    //GST_WARNING("obj_count %d", obj_count);
     if (obj_count == 0) {
         last_check = now;
         return 0;
     }
 
-    //GST_WARNING("prev people: %d, cars: %d, map size: %d", prev_counts[PERSON], prev_counts[CAR], counts.size());
+    GST_DEBUG("prev people: %d, cars: %d", prev_counts[PERSON], prev_counts[CAR]);
     delta = 0;
     for (auto it = counts.cbegin(); it != counts.cend(); ++it) {
         cat = (*it).first;
         count = (*it).second;
-        if (count > 0 && count > prev_counts[cat]) {
+        int prev_count = prev_counts[cat];
+        if (count > prev_count ) {
             delta += count - prev_counts[cat];
         }
     }
     last_check = now;
+    prev_counts = counts;
     if (delta <= 0) {
+        // GST_WARNING("<<< delta: %d", delta);
         return 0;
     }
-    prev_counts = counts;
-    GST_WARNING("delta: %d, people: %d, cars: %d", delta, counts[PERSON], counts[CAR]);
+    GST_WARNING(">>> delta: %d, people: %d, cars: %d", delta, counts[PERSON], counts[CAR]);
     res.numbb = obj_count;
     res.time = now;
-    res.ctx_id = 1;
+    res.ctx_id = context_id;
     int size = result_prefix_len + obj_count * sizeof(BB);
     // send to azc over posix msg queue
     rc = msg_send((char *) &res, size);
-    //GST_WARNING("numbb %d, buflen %d, rc after msg_send %d", res.numbb, size, rc);
+    // GST_WARNING("size %d, rc %d after send", size, rc);
     return rc;
 }
 

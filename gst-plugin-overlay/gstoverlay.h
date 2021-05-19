@@ -81,6 +81,8 @@ struct _GstOverlay {
   guint               text_color;
   guint               pose_color;
 
+  guint               context_id;
+
   GstVideoRectangle   text_dest_rect;
 
   /* User overlay */

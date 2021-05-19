@@ -60,6 +60,8 @@ G_DEFINE_TYPE (GstOverlay, gst_overlay, GST_TYPE_VIDEO_FILTER);
 #define DEFAULT_PROP_OVERLAY_POSE_COLOR  kColorLightGreen
 #define DEFAULT_PROP_OVERLAY_MASK_COLOR  kColorDarkGray
 
+#define DEFAULT_PROP_OVERLAY_CONTEXT_ID  0
+
 #define DEFAULT_PROP_DEST_RECT_X      40
 #define DEFAULT_PROP_DEST_RECT_Y      40
 #define DEFAULT_PROP_DEST_RECT_WIDTH  200
@@ -116,7 +118,8 @@ enum {
   PROP_OVERLAY_DATE_COLOR,
   PROP_OVERLAY_TEXT_COLOR,
   PROP_OVERLAY_POSE_COLOR,
-  PROP_OVERLAY_TEXT_DEST_RECT
+  PROP_OVERLAY_TEXT_DEST_RECT,
+  PROP_OVERLAY_CONTEXT_ID,
 };
 
 static GstStaticCaps gst_overlay_format_caps =
@@ -254,7 +257,7 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
   }
 
 #if defined HACK
-    tracker.Track(meta_list);
+    tracker.Track(meta_list, gst_overlay->context_id);
 #else
   if (meta_num) {
     for (uint32_t i = g_sequence_get_length (ov_id);
@@ -2071,6 +2074,11 @@ gst_overlay_set_property (GObject * object, guint prop_id,
     case PROP_OVERLAY_POSE_COLOR:
       gst_overlay->pose_color = g_value_get_uint (value);
       break;
+
+  case PROP_OVERLAY_CONTEXT_ID:
+      gst_overlay->context_id = g_value_get_uint (value);
+      break;
+
     case PROP_OVERLAY_TEXT_DEST_RECT:
       if (gst_value_array_get_size(value) != 4) {
         GST_DEBUG_OBJECT(gst_overlay,
@@ -2142,6 +2150,11 @@ gst_overlay_get_property (GObject * object, guint prop_id, GValue * value,
     case PROP_OVERLAY_POSE_COLOR:
       g_value_set_uint (value, gst_overlay->pose_color);
       break;
+
+  case PROP_OVERLAY_CONTEXT_ID:
+      g_value_set_uint (value, gst_overlay->context_id);
+      break;
+
     case PROP_OVERLAY_TEXT_DEST_RECT:
     {
       GValue val = G_VALUE_INIT;
@@ -2468,6 +2481,7 @@ gst_overlay_init (GstOverlay * gst_overlay)
   gst_overlay->date_color = DEFAULT_PROP_OVERLAY_DATE_COLOR;
   gst_overlay->text_color = DEFAULT_PROP_OVERLAY_TEXT_COLOR;
   gst_overlay->pose_color = DEFAULT_PROP_OVERLAY_POSE_COLOR;
+  gst_overlay->context_id = DEFAULT_PROP_OVERLAY_CONTEXT_ID;
   gst_overlay->text_dest_rect.x = DEFAULT_PROP_DEST_RECT_X;
   gst_overlay->text_dest_rect.y = DEFAULT_PROP_DEST_RECT_Y;
   gst_overlay->text_dest_rect.w = DEFAULT_PROP_DEST_RECT_WIDTH;
@@ -2544,6 +2558,11 @@ gst_overlay_class_init (GstOverlayClass * klass)
       0, G_MAXUINT, DEFAULT_PROP_OVERLAY_POSE_COLOR, static_cast<GParamFlags>(
         G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
+    g_object_class_install_property (gobject, PROP_OVERLAY_CONTEXT_ID,
+     g_param_spec_uint ("context-id", "Context id", "Camera context id",
+        0, G_MAXUINT, DEFAULT_PROP_OVERLAY_CONTEXT_ID, static_cast<GParamFlags>(
+         G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
   g_object_class_install_property (gobject, PROP_OVERLAY_TEXT_DEST_RECT,
       gst_param_spec_array ("dest-rect-ml-text",
           "Destination Rectangle for ML Detection overlay",
@@ -2568,6 +2587,7 @@ gst_overlay_class_init (GstOverlayClass * klass)
   filter->set_info = GST_DEBUG_FUNCPTR (gst_overlay_set_info);
   filter->transform_frame_ip =
       GST_DEBUG_FUNCPTR (gst_overlay_transform_frame_ip);
+
 }
 
 static gboolean

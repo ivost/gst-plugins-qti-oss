@@ -13,8 +13,9 @@ class Tracker {
 public:
     Tracker();
     ~Tracker();
-    int Track(GSList * meta_list);
+    int Track(GSList * meta_list, int context_id);
 private:
+    int context_id;
     long last_check;
     int rc;
     int cat;
