@@ -4,7 +4,7 @@
 #include <gst/gst.h>
 #include <map>
 
-#define HACK 1
+#define TRACKER 1
 
 // dealing with COCO categories only for now < 100 classes
 #define MAX_CAT 100

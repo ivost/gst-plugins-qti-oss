@@ -66,7 +66,7 @@ struct objdet_result {
 };
 
 Tracker::Tracker() {
-    GST_WARNING("Tracker(), v.1.5.18.1");
+    GST_WARNING("Tracker(), v.1.5.27.1");
     tracked[PERSON] = 1;
     tracked[CAR] = 1;
     last_check = 0;
@@ -77,7 +77,7 @@ Tracker::~Tracker() {
     GST_WARNING("~Tracker()");
     msg_reset();
 }
-
+// return 0 to indicate no trigger, > 0 = num bboxes delta
 int Tracker::Track(GSList * meta_list, int context_id) {
     struct objdet_result res;
 
@@ -92,7 +92,7 @@ int Tracker::Track(GSList * meta_list, int context_id) {
     if (time_delta < MIN_TIME_DELTA) {
         return 0;
     }
-    GST_DEBUG("Track enter, count %d, time_delta %ld, context_id %d", count, time_delta, context_id);
+    GST_WARNING("Track enter, count %d, time_delta %ld, context_id %d", count, time_delta, context_id);
     counts.clear();
     int idx = 0;
     for (int i = 0; i < count; i++) {
@@ -101,20 +101,20 @@ int Tracker::Track(GSList * meta_list, int context_id) {
         // expect id name for categories - i.e. 1 person
         // extract only the id - convert to int
         cat = 0;
-        //GST_WARNING("idx %d, name %s, conf %.2f", i, meta_info->name, meta_info->confidence);
         sscanf(meta_info->name, "%d ", &cat);
         if (cat == 0 || cat > 80) {
             continue;
         }
         //GST_WARNING("idx %d, cat %d, tracked %d", idx, cat, this->tracked[cat]);
         if (this->tracked[cat] == 0) {
-            GST_DEBUG("cat not tracked %d", cat);
+            GST_WARNING("cat not tracked %d", cat);
             continue;
         }
         obj_count++;
         if (obj_count >= MAX_BB) {
             break;
         }
+        GST_WARNING("cat %d, idx %d, name %s, conf %.2f", cat, i, meta_info->name, meta_info->confidence);
         ++counts[cat];
         res.bb[idx].cat = cat;
         res.bb[idx].conf = meta_info->confidence;
@@ -122,7 +122,7 @@ int Tracker::Track(GSList * meta_list, int context_id) {
         y = res.bb[idx].y = meta->bounding_box.y;
         w = res.bb[idx].width = meta->bounding_box.width;
         h = res.bb[idx].height = meta->bounding_box.height;
-        //GST_WARNING("idx %d, conf %f, x %d, y %d, w %d, h %d", idx, res.bb[idx].conf, x, y, w, h);
+        GST_WARNING("idx %d, conf %f, x %d, y %d, w %d, h %d", idx, res.bb[idx].conf, x, y, w, h);
         idx++;
     }
     if (obj_count == 0) {
@@ -130,7 +130,7 @@ int Tracker::Track(GSList * meta_list, int context_id) {
         return 0;
     }
 
-    GST_DEBUG("prev people: %d, cars: %d", prev_counts[PERSON], prev_counts[CAR]);
+    GST_WARNING("prev people: %d, cars: %d", prev_counts[PERSON], prev_counts[CAR]);
     delta = 0;
     for (auto it = counts.cbegin(); it != counts.cend(); ++it) {
         cat = (*it).first;
@@ -140,13 +140,17 @@ int Tracker::Track(GSList * meta_list, int context_id) {
             delta += count - prev_counts[cat];
         }
     }
-    last_check = now;
-    prev_counts = counts;
-    if (delta <= 0) {
+    if (delta < 0) {
+        GST_WARNING("skip delta: %d", delta);
+        return 0;
+    }
+    if (delta == 0) {
         // GST_WARNING("<<< delta: %d", delta);
         return 0;
     }
-    GST_WARNING(">>> delta: %d, people: %d, cars: %d", delta, counts[PERSON], counts[CAR]);
+    GST_WARNING("*** saving counts as prev, delta: %d, people: %d, cars: %d", delta, counts[PERSON], counts[CAR]);
+    last_check = now;
+    prev_counts = counts;
     res.numbb = obj_count;
     res.time = now;
     res.ctx_id = context_id;
@@ -154,6 +158,6 @@ int Tracker::Track(GSList * meta_list, int context_id) {
     // send to azc over posix msg queue
     rc = msg_send((char *) &res, size);
     // GST_WARNING("size %d, rc %d after send", size, rc);
-    return rc;
+    return delta;
 }
 

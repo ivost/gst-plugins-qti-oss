@@ -158,9 +158,12 @@ typedef gboolean (* GstOverlaySetFunc)
  */
 typedef void (* GstOverlayGetFunc) (gpointer data, gpointer user_data);
 
-#if defined HACK
+//#if defined TRACKER
+//#endif
+
 static Tracker tracker;
-#endif
+
+static int SkipFrame;
 
 /**
  * gst_overlay_caps:
@@ -253,15 +256,16 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
   gboolean res = TRUE;
   guint meta_num = g_slist_length (meta_list);
   if (meta_num == 0) {
-      return res;
+      return TRUE;
   }
 
-#if defined HACK
-    tracker.Track(meta_list, gst_overlay->context_id);
-#else
+if (tracker.Track(meta_list, gst_overlay->context_id) == 0) {
+      return TRUE;
+  }
+
+  //#else
   if (meta_num) {
-    for (uint32_t i = g_sequence_get_length (ov_id);
-        i < meta_num; i++) {
+    for (uint32_t i = g_sequence_get_length (ov_id); i < meta_num; i++) {
       g_sequence_append(ov_id, calloc(1, sizeof(uint32_t)));
     }
 
@@ -284,7 +288,6 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
         g_sequence_get_iter_at_pos (ov_id, meta_num),
         g_sequence_get_end_iter (ov_id));
   }
-#endif
 
   return TRUE;
 }
@@ -334,7 +337,7 @@ gst_overlay_apply_bbox_item (GstOverlay * gst_overlay, GstVideoRectangle * bbox,
   //GST_WARNING("=== label %s, x %d, y %d, w %d, h %d", label, bbox->x, bbox->y, bbox->w, bbox->h);
 
   if (sizeof (ov_param.bounding_box.box_name) <= strlen (label)) {
-    GST_ERROR_OBJECT (gst_overlay, "Text size exceeded %d <= %d",
+    GST_ERROR_OBJECT (gst_overlay, "Text size exceeded %ld <= %d",
         sizeof (ov_param.bounding_box.box_name), strlen (label));
     return FALSE;
   }
@@ -1142,17 +1145,68 @@ gst_overlay_apply_overlay (GstOverlay *gst_overlay, GstVideoFrame *frame)
   overlay_buf.frame_len = gst_buffer_get_size (frame->buffer);
   overlay_buf.format    = gst_overlay->format;
 
-#ifndef HACK
-  GST_WARN("APPLY_OVERLAY");
+//#ifndef HACK
+  GST_WARNING("APPLY_OVERLAY w %d, h %d, frame_len %d, overlay_buf.frame_len %d, format %x",
+              overlay_buf.width, overlay_buf.height, overlay_buf.frame_len, overlay_buf.format);
+
   ret = gst_overlay->overlay->ApplyOverlay (overlay_buf);
+
   if (ret != 0) {
     GST_ERROR_OBJECT (gst_overlay, "Overlay apply failed!");
     return FALSE;
   }
-#endif
+//#endif
 
   return TRUE;
 }
+
+/*
+ *
+ *
+https://gstreamer.freedesktop.org/documentation/video/video-frame.html?gi-language=c
+
+GstVideoFrame
+
+A video frame obtained from gst_video_frame_map
+
+info (GstVideoInfo) – the GstVideoInfo
+flags (GstVideoFrameFlags) – GstVideoFrameFlags for the frame
+buffer (GstBuffer *) – the mapped buffer
+meta (gpointer) – pointer to metadata if any
+id (gint) – id of the mapped frame. the id can for example be used to identify the frame in case of multiview video.
+data (gpointer *) – pointers to the plane data
+map (GstMapInfo *) – mappings of the planes
+
+
+ The purpose of this function is to make it easy for you to get to the video pixels in a generic way,
+ without you having to worry too much about details such as whether the video
+ data is allocated in one contiguous memory chunk or multiple memory chunks (e.g. one for each plane); or
+ if custom strides and custom plane offsets are used or not (as signalled by GstVideoMeta on each buffer).
+ This function will just fill the GstVideoFrame structure with the right values and
+ if you use the accessor macros everything will just work and you can access the data easily.
+ It also maps the underlying memory chunks for you.
+
+   GstVideoFrame vframe;
+   ...
+   // set RGB pixels to black one at a time
+   if (gst_video_frame_map (&vframe, video_info, video_buffer, GST_MAP_WRITE)) {
+     guint8 *pixels = GST_VIDEO_FRAME_PLANE_DATA (vframe, 0);
+     guint stride = GST_VIDEO_FRAME_PLANE_STRIDE (vframe, 0);
+     guint pixel_stride = GST_VIDEO_FRAME_COMP_PSTRIDE (vframe, 0);
+
+     for (h = 0; h < height; ++h) {
+       for (w = 0; w < width; ++w) {
+         guint8 *pixel = pixels + h * stride + w * pixel_stride;
+         memset (pixel, 0, pixel_stride);
+       }
+     }
+
+     gst_video_frame_unmap (&vframe);
+   }
+   ...
+ */
+
+
 
 /**
  * gst_overlay_set_text_overlay:
@@ -2254,9 +2308,11 @@ gst_overlay_set_info (GstVideoFilter * filter, GstCaps * in,
   switch (GST_VIDEO_INFO_FORMAT(ininfo)) { // GstVideoFormat
     case GST_VIDEO_FORMAT_NV12:
       new_format = TargetBufferFormat::kYUVNV12;
+      //GST_WARNING("****** GST_VIDEO_FORMAT_NV12 %x", GST_VIDEO_INFO_FORMAT(ininfo) );
       break;
     case GST_VIDEO_FORMAT_NV21:
       new_format = TargetBufferFormat::kYUVNV21;
+      //GST_WARNING("****** GST_VIDEO_FORMAT_NV21 %x", GST_VIDEO_INFO_FORMAT(ininfo) );
       break;
     default:
       GST_ERROR_OBJECT (gst_overlay, "Unhandled gst format: %d",
@@ -2383,7 +2439,7 @@ gst_overlay_transform_frame_ip (GstVideoFilter *filter, GstVideoFrame *frame)
     res = gst_overlay_apply_overlay (gst_overlay, frame);
 
     if (!res) {
-      GST_ERROR_OBJECT (gst_overlay, "Overlay apply failed!");
+      //GST_ERROR_OBJECT (gst_overlay, "Overlay apply failed!");
       return GST_FLOW_ERROR;
     }
   }
