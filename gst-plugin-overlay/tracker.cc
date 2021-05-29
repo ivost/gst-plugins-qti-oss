@@ -65,6 +65,24 @@ struct objdet_result {
     BB       bb[MAX_BB];
 };
 
+int64_t  now_ms_mono() {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return t.tv_sec * 1000 + t.tv_nsec/1000000;
+}
+
+int64_t  now_ms_real() {
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+    return t.tv_sec * 1000 + t.tv_nsec/1000000;
+}
+
+int32_t  now_sec_real() {
+    struct timespec t;
+    clock_gettime(CLOCK_REALTIME, &t);
+    return t.tv_sec;
+}
+
 Tracker::Tracker() {
     GST_WARNING("Tracker(), v.1.5.27.1");
     tracked[PERSON] = 1;
@@ -77,17 +95,26 @@ Tracker::~Tracker() {
     GST_WARNING("~Tracker()");
     msg_reset();
 }
-// return 0 to indicate no trigger, > 0 = num bboxes delta
-int Tracker::Track(GSList * meta_list, int context_id) {
+
+
+// return 0 to indicate no trigger/skip
+int Tracker::Track(GSList * meta_list, int context_id, int * skip_flag) {
     struct objdet_result res;
+
+    GstClockTime ts_begin;
+    ts_begin = gst_util_get_timestamp();
+    //GST_WARNING("==== ts_begin %ld, now_ms_mono %ld, now_ms_real %ld", ts_begin, now_ms_mono(), now_ms_real());
 
     int count = (int) g_slist_length (meta_list);
     int obj_count = 0;
+    *skip_flag = 1;
 
     if (count == 0) {
         return 0;
     }
-    long now = time(NULL);
+
+    long now = now_ms_mono();
+
     long time_delta = now - last_check;
     if (time_delta < MIN_TIME_DELTA) {
         return 0;
@@ -158,6 +185,7 @@ int Tracker::Track(GSList * meta_list, int context_id) {
     // send to azc over posix msg queue
     rc = msg_send((char *) &res, size);
     // GST_WARNING("size %d, rc %d after send", size, rc);
-    return delta;
+    *skip_flag = 0;
+    return 1;
 }
 

@@ -256,10 +256,10 @@ gst_overlay_apply_item_list (GstOverlay *gst_overlay,
   gboolean res = TRUE;
   guint meta_num = g_slist_length (meta_list);
   if (meta_num == 0) {
-      return TRUE;
+    return TRUE;
   }
 
-if (tracker.Track(meta_list, gst_overlay->context_id) == 0) {
+  if (tracker.Track(meta_list, gst_overlay->context_id, &SkipFrame) == 0) {
       return TRUE;
   }
 
@@ -2374,6 +2374,11 @@ gst_overlay_transform_frame_ip (GstVideoFilter *filter, GstVideoFrame *frame)
     return GST_FLOW_ERROR;
   }
 
+//  if (SkipFrame) {
+//    GST_WARNING("=== SKIP ===");
+//    return GST_FLOW_FLUSHING;
+//  }
+
   res = gst_overlay_apply_item_list (gst_overlay,
                             gst_buffer_get_segmentation_meta (frame->buffer),
                             gst_overlay_apply_ml_simg_item,
@@ -2439,7 +2444,7 @@ gst_overlay_transform_frame_ip (GstVideoFilter *filter, GstVideoFrame *frame)
     res = gst_overlay_apply_overlay (gst_overlay, frame);
 
     if (!res) {
-      //GST_ERROR_OBJECT (gst_overlay, "Overlay apply failed!");
+      GST_ERROR_OBJECT (gst_overlay, "Overlay apply failed!");
       return GST_FLOW_ERROR;
     }
   }
