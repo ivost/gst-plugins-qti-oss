@@ -14,6 +14,7 @@ using namespace std;
 const int result_prefix_len = 16;
 const int PERSON = 1;
 const int CAR = 3;
+const int TRUCK = 8;
 const int MAX_FIELDS = 100;
 const int MIN_TIME_DELTA = 2;
 
@@ -84,7 +85,7 @@ int32_t  now_sec_real() {
 }
 
 Tracker::Tracker() {
-    GST_WARNING("Tracker(), v.1.5.27.1");
+    GST_WARNING("Tracker(), v.1.6.2.0");
     tracked[PERSON] = 1;
     tracked[CAR] = 1;
     last_check = 0;
@@ -107,7 +108,7 @@ int Tracker::Track(GSList * meta_list, int context_id, int * skip_flag) {
 
     int count = (int) g_slist_length (meta_list);
     int obj_count = 0;
-    *skip_flag = 1;
+    // *skip_flag = 1;
 
     if (count == 0) {
         return 0;
@@ -157,27 +158,36 @@ int Tracker::Track(GSList * meta_list, int context_id, int * skip_flag) {
         return 0;
     }
 
-    GST_WARNING("prev people: %d, cars: %d", prev_counts[PERSON], prev_counts[CAR]);
+    GST_WARNING("prev people: %d, cars: %d, trucks: %d", prev_counts[PERSON], prev_counts[CAR], prev_counts[TRUCK]);
     delta = 0;
     for (auto it = counts.cbegin(); it != counts.cend(); ++it) {
         cat = (*it).first;
         count = (*it).second;
         int prev_count = prev_counts[cat];
         if (count > prev_count ) {
-            delta += count - prev_counts[cat];
+            int d = count - prev_counts[cat];
+            delta += d;
         }
     }
     if (delta < 0) {
-        GST_WARNING("skip delta: %d", delta);
+        // GST_WARNING("skip delta: %d", delta);
         return 0;
     }
     if (delta == 0) {
         // GST_WARNING("<<< delta: %d", delta);
         return 0;
     }
-    GST_WARNING("*** saving counts as prev, delta: %d, people: %d, cars: %d", delta, counts[PERSON], counts[CAR]);
+    GST_ERROR("*** saving counts as prev, delta: %d, people: %d, cars: %d, trucks: %d, obj_count %d",
+              delta, counts[PERSON], counts[CAR], counts[TRUCK], obj_count);
     last_check = now;
-    prev_counts = counts;
+    // prev_counts = counts;
+    prev_counts.clear();
+    for (auto it = counts.cbegin(); it != counts.cend(); ++it) {
+        cat = (*it).first;
+        count = (*it).second;
+        prev_counts[cat] = count;
+    }
+    counts.clear();
     res.numbb = obj_count;
     res.time = now;
     res.ctx_id = context_id;
@@ -185,7 +195,7 @@ int Tracker::Track(GSList * meta_list, int context_id, int * skip_flag) {
     // send to azc over posix msg queue
     rc = msg_send((char *) &res, size);
     // GST_WARNING("size %d, rc %d after send", size, rc);
-    *skip_flag = 0;
+    //*skip_flag = 0;
     return 1;
 }
 
